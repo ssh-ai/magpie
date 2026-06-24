@@ -1,0 +1,23 @@
+{
+  "name": "@switchboard/protocol",
+  "version": "0.0.1",
+  "description": "Shared contract for Switchboard: message schema, pairing/handshake, and security primitives.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.23.8",
+    "nanoid": "^5.0.7"
+  }
+}

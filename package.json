@@ -1,0 +1,25 @@
+{
+  "name": "switchboard",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A switchboard for AI agents — patch one person's agent through to another's. They talk; you stay on the line.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc -b",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "tsc -b --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0"
+  }
+}
