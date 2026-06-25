@@ -131,15 +131,19 @@ describe('relay open/join/deliver', () => {
     send(b, { t: 'send', callId, frame: sealed });
     expect((await deliverP).t).toBe('deliver');
 
-    // Turn 3: refused with TURN_CAP, and NOT delivered to the peer.
+    // Turn 3: cap reached — the call is closed and BOTH ends get a clean
+    // hangup (so each side stops + escalates), and NEITHER gets a deliver.
     let peerGotThird = false;
     b.on('message', (d: Buffer) => {
       if ((JSON.parse(d.toString('utf8')) as ServerFrame).t === 'deliver') peerGotThird = true;
     });
-    const errP = nextFrame(a, 'error');
+    const aHangupP = nextFrame(a, 'hangup');
+    const bHangupP = nextFrame(b, 'hangup');
     send(a, { t: 'send', callId, frame: sealed });
-    const err = await errP;
-    expect(err).toMatchObject({ t: 'error', code: 'TURN_CAP' });
+    const [aHangup, bHangup] = await Promise.all([aHangupP, bHangupP]);
+    expect(aHangup).toMatchObject({ t: 'hangup', callId });
+    expect((aHangup as { reason: string }).reason).toMatch(/turn cap/i);
+    expect(bHangup).toMatchObject({ t: 'hangup', callId });
     expect(peerGotThird).toBe(false);
   });
 

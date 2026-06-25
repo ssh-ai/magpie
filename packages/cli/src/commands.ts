@@ -20,12 +20,15 @@ export interface Io {
   out: (line: string) => void;
   err: (line: string) => void;
   env: NodeJS.ProcessEnv;
+  /** Line source for typing replies. Present on the real CLI; omitted in tests. */
+  input?: NodeJS.ReadableStream;
 }
 
 export const consoleIo: Io = {
   out: (l) => process.stdout.write(`${l}\n`),
   err: (l) => process.stderr.write(`${l}\n`),
   env: process.env,
+  input: process.stdin,
 };
 
 /** The shareable invite line a human pastes into chat. */
@@ -61,7 +64,9 @@ export async function start(topic: string, io: Io = consoleIo): Promise<void> {
   io.out('');
   io.out('Waiting on the line… (Ctrl-C to hang up)');
 
-  const reason = await streamUntilDone(client, io.out);
+  const reason = await streamUntilDone(client, io.out, {
+    send: io.input ? { from, callId, input: io.input, peer: null } : undefined,
+  });
   io.out(`\n${reason}`);
   clearSession();
   client.close();
@@ -100,6 +105,7 @@ export async function call(topic: string, io: Io = consoleIo): Promise<void> {
   // print "patched through" on the first message and then keep streaming.
   let announced = false;
   const reason = await streamUntilDone(client, io.out, {
+    send: io.input ? { from, callId, input: io.input, peer: null } : undefined,
     onMessage: () => {
       if (!announced) {
         announced = true;
@@ -121,7 +127,7 @@ export async function join(rawCode: string, io: Io = consoleIo): Promise<void> {
   const url = relayUrl(io.env);
   const code = normalizePairingCode(rawCode); // throws a friendly error on bad shape
   const client = await SwitchboardClient.connect(url);
-  const { callId } = await client.join({ from, code });
+  const { callId, peer } = await client.join({ from, code });
 
   writeSession({
     code,
@@ -134,10 +140,12 @@ export async function join(rawCode: string, io: Io = consoleIo): Promise<void> {
     startedAt: new Date().toISOString(),
   });
 
-  io.out('✅ Patched through. You are on the line.');
-  io.out('Listening for queries… (Ctrl-C to hang up)');
+  io.out(`✅ Patched through to ${peer}. You are on the line.`);
+  io.out('Type a message + Enter to send; inbound queries appear below. (Ctrl-C to hang up)');
 
-  const reason = await streamUntilDone(client, io.out);
+  const reason = await streamUntilDone(client, io.out, {
+    send: io.input ? { from, callId, input: io.input, peer } : undefined,
+  });
   io.out(`\n${reason}`);
   clearSession();
   client.close();

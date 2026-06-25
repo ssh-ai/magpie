@@ -156,8 +156,21 @@ export class RelayServer {
     // Turn accounting BEFORE delivery so a cap violation never reaches the peer.
     // The relay cannot read the sealed payload, so it counts every delivered
     // `send` as one turn — the strongest cap it can enforce without unsealing.
-    // This throws TURN_CAP (and closes the call) once maxTurns is reached.
-    this.#registry.consumeQueryTurn(call);
+    // On cap, close the call and notify BOTH ends with a clean hangup so each
+    // side stops and escalates to its human, rather than the sender getting a
+    // bare error and the peer being left hanging.
+    try {
+      this.#registry.consumeQueryTurn(call);
+    } catch (err) {
+      if (err instanceof RegistryError && err.code === 'TURN_CAP') {
+        const reason = `turn cap of ${call.maxTurns} reached`;
+        const ends = [...call.endpoints];
+        this.#registry.close(call.callId);
+        for (const ep of ends) this.#send(ep, { t: 'hangup', callId: call.callId, reason });
+        return;
+      }
+      throw err;
+    }
 
     this.#send(peer, { t: 'deliver', callId: call.callId, frame: frame.frame });
   }
