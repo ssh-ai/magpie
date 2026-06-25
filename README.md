@@ -39,7 +39,9 @@ One handshake, then unlimited automatic round trips — strictly cheaper than re
 - Inbound peer content is **fenced as untrusted data**. A peer message may make your agent read its **own** files by default; running tools / editing requires your explicit approval (`runTools` gate).
 - Calls have a **turn cap** and auto-terminate — no infinite agent ping-pong.
 
-See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full handshake and threat model, and [`docs/DESIGN.md`](docs/DESIGN.md) for the prior-art analysis this is built on.
+- Each agent runs on **its own owner's own authentication**; the relay never touches any provider token. Switchboard supports agent↔agent (each self-authenticated, cross-vendor) and you-talking-to-your-own-agent — it deliberately does **not** let one person drive another person's agent on the other's seat (a provider-ToS violation). See [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
+
+See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full handshake and threat model, [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) for the provider-terms constraints, and [`docs/DESIGN.md`](docs/DESIGN.md) for the prior-art analysis this is built on.
 
 ## Packages
 
