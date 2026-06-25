@@ -25,3 +25,5 @@ export { ClaudeResponder, CodexResponder, GeminiResponder } from './adapters.js'
 export type { ShellResponderOptions, RunFn } from './adapters.js';
 
 export { TypedEmitter } from './events.js';
+
+export { goOnDuty, dutyPresence } from './presence.js';

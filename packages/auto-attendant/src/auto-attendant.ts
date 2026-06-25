@@ -56,8 +56,21 @@ export interface AutoAttendantOptions {
   readonly cwd: string;
   /** The call topic (lives on the Call, not the Message). Passed to the responder as context. */
   readonly topic: string;
-  /** The vendor-pluggable brain. */
+  /** The vendor-pluggable brain. Used when no live session is on duty (the
+   * "answer from saved files" fallback). */
   readonly responder: Responder;
+  /**
+   * Optional LIVE responder — a real, running session that answers from its
+   * current in-memory context. When {@link isLive} returns true at query time,
+   * this is used instead of {@link responder}. (Hybrid: live-if-on, files-if-off.)
+   */
+  readonly liveResponder?: Responder;
+  /**
+   * Presence check: is a live session on duty right now? Evaluated per query.
+   * If it returns true and {@link liveResponder} is set, the live responder
+   * answers; otherwise the file-based {@link responder} does.
+   */
+  readonly isLive?: () => boolean | Promise<boolean>;
   /** The connected transport (e.g. a SwitchboardClient). */
   readonly transport: CallTransport;
   /**
@@ -101,6 +114,8 @@ export class AutoAttendant extends TypedEmitter<AutoAttendantEvents> {
   readonly #cwd: string;
   readonly #topic: string;
   readonly #responder: Responder;
+  readonly #liveResponder: Responder | undefined;
+  readonly #isLive: (() => boolean | Promise<boolean>) | undefined;
   readonly #transport: CallTransport;
   readonly #maxTurns: number;
   readonly #policy: ActionPolicy;
@@ -116,6 +131,8 @@ export class AutoAttendant extends TypedEmitter<AutoAttendantEvents> {
     this.#cwd = opts.cwd;
     this.#topic = opts.topic;
     this.#responder = opts.responder;
+    this.#liveResponder = opts.liveResponder;
+    this.#isLive = opts.isLive;
     this.#transport = opts.transport;
     this.#maxTurns = opts.maxTurns;
     this.#policy = opts.policy ?? DEFAULT_ACTION_POLICY;
@@ -166,10 +183,22 @@ export class AutoAttendant extends TypedEmitter<AutoAttendantEvents> {
       return;
     }
 
+    // Hybrid routing: a live session on duty answers from its in-memory context;
+    // otherwise the file-based responder answers from saved files.
+    let useLive = false;
+    if (this.#liveResponder && this.#isLive) {
+      try {
+        useLive = await this.#isLive();
+      } catch {
+        useLive = false; // presence check failed → fall back to files
+      }
+    }
+    const responder = useLive && this.#liveResponder ? this.#liveResponder : this.#responder;
+
     let confident: boolean;
     let text: string;
     try {
-      const result = await this.#responder.answer({
+      const result = await responder.answer({
         question: msg.content,
         topic: this.#topic,
         cwd: this.#cwd,

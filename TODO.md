@@ -30,6 +30,13 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       flagged it for my operator") and STAYS on the line; only the turn cap / an
       explicit hangup ends a call. ✅ verified live (in-scope → real answer;
       `~/Desktop` → polite decline, call stayed alive).
+- [~] **Hybrid live-or-files responder (live-if-on, files-if-off).**
+      - [x] Step 1: AutoAttendant picks `liveResponder` when `isLive()` is true,
+            else the file `responder`; `goOnDuty`/`dutyPresence` give a file-mtime
+            heartbeat presence with no daemon/IPC. (19 auto-attendant tests.)
+      - [ ] Step 2: wire a real LIVE responder = a running Claude Code session
+            (via the Switchboard MCP) answering from its in-memory context, and
+            `switchboard-attend` ergonomics (`--on-duty` heartbeat, handle).
 - [ ] **Persistent agent session** per side instead of fresh `claude -p` per turn
       (token efficiency; keeps conversation context across turns).
 - [ ] **Auto-resolve**: the agent decides the matter is settled and calls resolve

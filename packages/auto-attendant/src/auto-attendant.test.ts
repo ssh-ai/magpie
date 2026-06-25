@@ -263,4 +263,38 @@ describe('AutoAttendant', () => {
     expect(transport.hangups).toBe(1);
     expect(escalations.at(-1)!.reason).toBe('turn-cap');
   });
+
+  it('hybrid: uses the LIVE responder when a live session is on duty', async () => {
+    const file = new FakeResponder(() => ({ text: 'from files', confident: true }));
+    const live = new FakeResponder(() => ({ text: 'from live session', confident: true }));
+    const transport = new FakeTransport();
+    const aa = new AutoAttendant({
+      self: SELF, callId: CALL_ID, cwd: '/repo', topic: 't',
+      responder: file, liveResponder: live, isLive: () => true,
+      transport, maxTurns: 12,
+    });
+
+    await aa.handleQuery(query('q'));
+
+    expect(live.seen).toHaveLength(1);
+    expect(file.seen).toHaveLength(0);
+    expect(transport.sent[0]!.msg.content).toBe('from live session');
+  });
+
+  it('hybrid: falls back to the FILE responder when no live session is on duty', async () => {
+    const file = new FakeResponder(() => ({ text: 'from files', confident: true }));
+    const live = new FakeResponder(() => ({ text: 'from live session', confident: true }));
+    const transport = new FakeTransport();
+    const aa = new AutoAttendant({
+      self: SELF, callId: CALL_ID, cwd: '/repo', topic: 't',
+      responder: file, liveResponder: live, isLive: () => false,
+      transport, maxTurns: 12,
+    });
+
+    await aa.handleQuery(query('q'));
+
+    expect(file.seen).toHaveLength(1);
+    expect(live.seen).toHaveLength(0);
+    expect(transport.sent[0]!.msg.content).toBe('from files');
+  });
 });
