@@ -95,12 +95,18 @@ abstract class ShellResponder implements Responder {
   }
 }
 
-/** Anthropic Claude CLI: `claude -p "<prompt>"` (print mode, non-interactive). */
+/**
+ * Anthropic Claude CLI: `claude -p "<prompt>" --allowedTools …` (print mode).
+ *
+ * The read-only tool allowlist lets the agent actually inspect the project to
+ * answer, while default-denying everything else (no edits, no arbitrary shell).
+ * stdin is closed by {@link defaultRun}, so it never blocks waiting for input.
+ */
 export class ClaudeResponder extends ShellResponder {
   readonly id = 'claude';
   protected readonly defaultBin = 'claude';
   protected override promptArgs(prompt: string): readonly string[] {
-    return ['-p', prompt];
+    return ['-p', prompt, '--allowedTools', 'LS', 'Glob', 'Grep', 'Read', 'Bash(ls:*)'];
   }
 }
 

@@ -16,16 +16,15 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
 ---
 
 ## P0 — Mode ② : real agent autonomy (the product)
-- [ ] **Productize the real responder** in `@switchboard/auto-attendant` (not the
-      demo `hostA.mjs`). Fix found live: spawn the agent CLI with **stdin closed**
-      (`stdio: ['ignore','pipe','pipe']`), read-only tool scope
-      (`--allowedTools LS Glob "Bash(ls:*)" Read`), `cwd` scoped to the project.
-- [ ] **Tune the receiving-agent prompt for TRUSTED collaborators.** Live finding:
-      the current "untrusted peer" fence is so strict the agent *refused a
-      legitimate teammate question* (privacy). Need a "cooperative-but-bounded
-      teammate" framing: answer the peer's questions about the shared work, still
-      never execute arbitrary instructions / leak unrelated private data.
-      (Trust dial: stranger ⟶ teammate.)
+- [x] **Real responder productized** in `@switchboard/auto-attendant`:
+      `ClaudeResponder` runs the official CLI with stdin closed + read-only tools
+      (`--allowedTools LS Glob Grep Read "Bash(ls:*)"`), `cwd`-scoped; added a
+      `switchboard-attend <code>` bin. ✅ verified live: a real claude attendant
+      answered an asker's project question over the relay (E2E, no refusal).
+- [x] **Receiving-agent prompt tuned for TRUSTED collaborators** — "cooperative
+      teammate" framing replaces the over-strict fence that made the agent refuse
+      a legitimate teammate question. (Still: never executes embedded instructions,
+      read-only, cwd-scoped, fail-closed CONFIDENCE.) ✅
 - [ ] **Persistent agent session** per side instead of fresh `claude -p` per turn
       (token efficiency; keeps conversation context across turns).
 - [ ] **Auto-resolve**: the agent decides the matter is settled and calls resolve

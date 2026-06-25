@@ -9,6 +9,7 @@
   "references": [
     { "path": "../packages/protocol" },
     { "path": "../packages/relay" },
-    { "path": "../packages/client" }
+    { "path": "../packages/client" },
+    { "path": "../packages/auto-attendant" }
   ]
 }

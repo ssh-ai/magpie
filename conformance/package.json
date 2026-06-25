@@ -12,7 +12,8 @@
   "dependencies": {
     "@switchboard/protocol": "*",
     "@switchboard/relay": "*",
-    "@switchboard/client": "*"
+    "@switchboard/client": "*",
+    "@switchboard/auto-attendant": "*"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
