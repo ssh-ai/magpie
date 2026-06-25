@@ -242,13 +242,19 @@ export class SwitchboardClient {
     switch (frame.t) {
       case 'opened': {
         const pending = this.#pendingOpen.shift();
-        this.#pendingChannel.shift();
+        const channel = this.#pendingChannel.shift();
+        // Register the channel SYNCHRONOUSLY here, not in the awaited start()
+        // continuation: ws can emit `opened` and a following `deliver` in the
+        // same synchronous batch, and a message sent the instant we pair would
+        // otherwise hit an unregistered channel and be dropped.
+        if (channel) this.#channels.set(frame.callId, channel);
         if (pending) pending.resolve(frame);
         return;
       }
       case 'joined': {
         const pending = this.#pendingJoin.shift();
-        this.#pendingChannel.shift();
+        const channel = this.#pendingChannel.shift();
+        if (channel) this.#channels.set(frame.callId, channel);
         if (pending) pending.resolve(frame);
         return;
       }
