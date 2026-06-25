@@ -4,6 +4,26 @@ Status snapshot (2026-06-25): core transport works and is validated live
 cross-machine (iMac ↔ MacBook over LAN/Tailscale). 86 tests green. What remains
 is mode ② (real agent autonomy) + UX + hardening + reach.
 
+## Scope decisions (2026-06-25, situation-driven)
+- **THE core (S2):** two agents talk DIRECTLY, multi-turn, until **mutual
+  agreement** — then report to both humans. One-shot Q&A is NOT the product
+  (you wouldn't need this for that). Origin: A plans / B implements; A thinks it's
+  wrong → repeated human-relayed back-and-forth until it's right → that repetition
+  is the pain. Stop condition = "nothing left to resolve / agreed", with the turn
+  cap only as a safety backstop. **This is the main thing still missing** (we have
+  the answerer side; we lack the autonomous driver that evaluates the peer's reply
+  against its own spec, pushes back, and declares agreement).
+- Both sides are LIVE/present (see S3 below), so this runs over live sessions (MCP).
+- **S5 (app users) is IN scope** — needs a remote HTTP MCP server (BYO-key).
+- **S3 (answer-while-away from saved files): DEFERRED by decision.** Felt wrong —
+  connection should require the other person to actually be working/present. So
+  drop the "files-if-off" fallback for now (the live-or-files switch we built stays,
+  but the file fallback is optional). Revisit later if a real need appears.
+- **S6 (non-dev web watch/approve): OUT for now** — target is developers; app
+  users (S5) cover participation.
+- S4 (Codex/Gemini) later; S8 hard sandbox later; S9 works (harden only on public
+  exposure).
+
 ## ✅ Done
 - Protocol/relay/client/MCP/CLI/auto-attendant(stub)/web(stub)/conformance scaffold.
 - E2E AES-GCM channel from pairing code; relay brokers ciphertext only.
