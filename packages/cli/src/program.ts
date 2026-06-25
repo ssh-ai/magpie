@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { start, call, join, listen, hangup, consoleIo } from './commands.js';
+import { start, call, join, listen, hangup, history, showReport, consoleIo } from './commands.js';
 import type { Io } from './commands.js';
 
 /**
@@ -55,6 +55,17 @@ export function buildProgram(io: Io = consoleIo): Command {
     .command('hangup')
     .description('drop the active call and notify the other side')
     .action(() => run(() => hangup(io)));
+
+  program
+    .command('history')
+    .description('list past calls and their outcomes (resolved / hung up / …)')
+    .action(() => run(() => history(io)));
+
+  program
+    .command('report')
+    .argument('[callId]', 'which call (default: most recent)')
+    .description('show a past call: outcome, summary, and full transcript')
+    .action((callId: string | undefined) => run(() => showReport(callId, io)));
 
   return program;
 }

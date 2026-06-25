@@ -4,11 +4,20 @@ import {
   rendezvousId,
   channelFromCode,
   generatePairingCode,
+  newMessageId,
   MAX_CONTENT_BYTES,
   DEFAULT_MAX_TURNS,
   ABSOLUTE_MAX_TURNS,
+  PROTOCOL_VERSION,
 } from '@switchboard/protocol';
-import type { Extension, Message, PairingChannel } from '@switchboard/protocol';
+import type {
+  Extension,
+  Message,
+  PairingChannel,
+  CallReport,
+  CallOutcome,
+  TranscriptEntry,
+} from '@switchboard/protocol';
 import type {
   ClientToRelay,
   OpenFrame,
@@ -21,6 +30,18 @@ import { parseRelayFrame } from './wire.js';
 type MessageCb = (msg: Message) => void;
 type HangupCb = (reason: string) => void;
 type PeerJoinedCb = (callId: string, peer: Extension) => void;
+type ResolvedCb = (callId: string, summary: string) => void;
+
+/** Per-call bookkeeping for transcript + report building. */
+interface CallCtx {
+  from: Extension;
+  peer: Extension | null;
+  topic: string;
+  startedAt: string;
+  transcript: TranscriptEntry[];
+  /** Set when a `resolve` message is sent or received. */
+  summary: string | null;
+}
 
 /** A request awaiting its matching relay reply, correlated by reply type. */
 interface Pending<T> {
@@ -43,9 +64,13 @@ export class SwitchboardClient {
   /** Per-call E2E channel. The relay can never produce one of these. */
   readonly #channels = new Map<string, PairingChannel>();
 
+  /** Per-call transcript + metadata, for building the end-of-call report. */
+  readonly #ctx = new Map<string, CallCtx>();
+
   readonly #messageCbs: MessageCb[] = [];
   readonly #hangupCbs: HangupCb[] = [];
   readonly #peerJoinedCbs: PeerJoinedCb[] = [];
+  readonly #resolvedCbs: ResolvedCb[] = [];
 
   /**
    * Pending open/join requests. The relay correlates replies by connection
@@ -112,6 +137,14 @@ export class SwitchboardClient {
 
     const opened = await this.#request<OpenedFrame>(this.#pendingOpen, channel, send);
     this.#channels.set(opened.callId, channel);
+    this.#ctx.set(opened.callId, {
+      from: opts.from,
+      peer: null,
+      topic: opts.topic,
+      startedAt: new Date().toISOString(),
+      transcript: [],
+      summary: null,
+    });
     return { code, callId: opened.callId, channel };
   }
 
@@ -131,6 +164,14 @@ export class SwitchboardClient {
     };
     const joined = await this.#request<JoinedFrame>(this.#pendingJoin, channel, send);
     this.#channels.set(joined.callId, channel);
+    this.#ctx.set(joined.callId, {
+      from: opts.from,
+      peer: joined.peer,
+      topic: '(joined)',
+      startedAt: new Date().toISOString(),
+      transcript: [],
+      summary: null,
+    });
     // `peer` is the opener's extension, reported by the relay in the `joined`
     // frame. Surfacing it lets callers address outbound messages correctly.
     return { callId: joined.callId, peer: joined.peer, channel };
@@ -155,6 +196,63 @@ export class SwitchboardClient {
     const frame = Buffer.from(sealed).toString('base64');
 
     this.#sendFrame({ t: 'send', callId, frame });
+    this.#record(callId, msg);
+  }
+
+  /**
+   * Declare the call resolved with a human/agent-readable `summary`, then end
+   * it. Sends a `resolve` message (the peer learns the conclusion) and hangs up.
+   * The summary lands in both sides' end-of-call report.
+   */
+  async resolve(callId: string, summary: string): Promise<void> {
+    const ctx = this.#ctx.get(callId);
+    if (!ctx) throw new Error(`no such call ${callId}`);
+    if (!ctx.peer) throw new Error('cannot resolve before a peer has joined');
+    ctx.summary = summary;
+    const msg: Message = {
+      v: PROTOCOL_VERSION,
+      id: newMessageId(),
+      callId,
+      from: ctx.from,
+      to: ctx.peer,
+      type: 'resolve',
+      ts: new Date().toISOString(),
+      turn: ctx.transcript.length,
+      inReplyTo: null,
+      content: summary,
+    };
+    await this.send(callId, msg);
+    await this.hangup(callId);
+  }
+
+  /** Build the end-of-call report from the recorded transcript. */
+  buildReport(callId: string, outcome: CallOutcome): CallReport | null {
+    const ctx = this.#ctx.get(callId);
+    if (!ctx) return null;
+    return {
+      callId,
+      topic: ctx.topic,
+      me: ctx.from,
+      peer: ctx.peer,
+      outcome,
+      summary: outcome === 'resolved' ? ctx.summary : null,
+      turns: ctx.transcript.length,
+      startedAt: ctx.startedAt,
+      endedAt: new Date().toISOString(),
+      transcript: ctx.transcript,
+    };
+  }
+
+  #record(callId: string, msg: Message): void {
+    const ctx = this.#ctx.get(callId);
+    if (!ctx) return;
+    const entry: TranscriptEntry = {
+      from: msg.from,
+      type: msg.type,
+      content: msg.content,
+      ts: msg.ts,
+    };
+    ctx.transcript.push(entry);
   }
 
   /** Register a callback for decrypted, validated inbound messages. */
@@ -175,6 +273,11 @@ export class SwitchboardClient {
    */
   onPeerJoined(cb: PeerJoinedCb): void {
     this.#peerJoinedCbs.push(cb);
+  }
+
+  /** Register a callback fired when the PEER declares the call resolved. */
+  onResolved(cb: ResolvedCb): void {
+    this.#resolvedCbs.push(cb);
   }
 
   /** Tear down a single call and tell the relay. */
@@ -261,6 +364,8 @@ export class SwitchboardClient {
       case 'peer-joined': {
         // The opener learns its peer connected, and who they are. Channel was
         // already registered at start; surface the peer to any session layer.
+        const ctx = this.#ctx.get(frame.callId);
+        if (ctx) ctx.peer = frame.peer;
         for (const cb of this.#peerJoinedCbs) cb(frame.callId, frame.peer);
         return;
       }
@@ -299,6 +404,17 @@ export class SwitchboardClient {
       );
       return;
     }
+    this.#record(callId, msg);
+
+    // A `resolve` message is the peer concluding the call with a summary — it
+    // is not a normal query, so surface it via onResolved, not onMessage.
+    if (msg.type === 'resolve') {
+      const ctx = this.#ctx.get(callId);
+      if (ctx) ctx.summary = msg.content;
+      for (const cb of this.#resolvedCbs) cb(callId, msg.content);
+      return;
+    }
+
     for (const cb of this.#messageCbs) cb(msg);
   }
 

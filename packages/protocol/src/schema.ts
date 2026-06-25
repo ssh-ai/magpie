@@ -16,7 +16,7 @@ export type Extension = z.infer<typeof Extension>;
 export const MessageId = z.string().regex(/^msg-[A-Za-z0-9_-]{10,}$/);
 export const CallId = z.string().regex(/^call-[A-Za-z0-9_-]{10,}$/);
 
-export const MessageType = z.enum(['query', 'response', 'ping', 'hangup', 'system']);
+export const MessageType = z.enum(['query', 'response', 'ping', 'hangup', 'system', 'resolve']);
 export type MessageType = z.infer<typeof MessageType>;
 
 /**
@@ -66,4 +66,39 @@ export type Call = z.infer<typeof Call>;
 /** Parse + validate an inbound wire frame. Throws on anything malformed. */
 export function parseMessage(raw: unknown): Message {
   return Message.parse(raw);
+}
+
+/**
+ * How a call ended. `resolved` is the good outcome — an agent declared the
+ * matter settled and supplied a summary. The rest are non-resolutions.
+ */
+export const CallOutcome = z.enum(['resolved', 'turn-cap', 'hung-up', 'disconnected']);
+export type CallOutcome = z.infer<typeof CallOutcome>;
+
+/** One line of a call transcript (decrypted, from this side's point of view). */
+export interface TranscriptEntry {
+  from: Extension;
+  type: MessageType;
+  content: string;
+  ts: string;
+}
+
+/**
+ * The artifact handed to a human when a call ends: the outcome, the agent's
+ * summary (if it resolved), and the full transcript. Persisted locally so an
+ * away human can read it later — this is the "report on termination" the whole
+ * async value proposition depends on.
+ */
+export interface CallReport {
+  callId: string;
+  topic: string;
+  me: Extension;
+  peer: Extension | null;
+  outcome: CallOutcome;
+  /** The resolution summary; present iff outcome === 'resolved'. */
+  summary: string | null;
+  turns: number;
+  startedAt: string;
+  endedAt: string;
+  transcript: TranscriptEntry[];
 }

@@ -3,6 +3,33 @@ import { normalizePairingCode } from '@switchboard/protocol';
 import { relayUrl, requireExtension } from './env.js';
 import { writeSession, readSession, clearSession } from './store.js';
 import { streamUntilDone } from './runtime.js';
+import type { StreamResult } from './runtime.js';
+import { saveReport, renderReport, listReports, readReport, outcomeLabel } from './reports.js';
+
+/**
+ * Print the end reason, then build + show + persist the call report. This is
+ * the "report on termination" the async value proposition depends on: the
+ * conclusion + transcript are saved to ~/.switchboard/calls/ so an away human
+ * can read them later with `switchboard report`.
+ */
+function finishCall(
+  client: SwitchboardClient,
+  callId: string,
+  result: StreamResult,
+  io: Io,
+): void {
+  io.out(`\n${result.reason}`);
+  const report = client.buildReport(callId, result.outcome);
+  if (report) {
+    io.out(renderReport(report));
+    try {
+      const path = saveReport(report);
+      io.out(`📋 Report saved: ${path}  (re-read with: switchboard report ${report.callId})`);
+    } catch (err) {
+      io.err(`(could not save report: ${err instanceof Error ? err.message : String(err)})`);
+    }
+  }
+}
 
 /**
  * The command handlers. Each is small and friendly: this is the
@@ -64,10 +91,10 @@ export async function start(topic: string, io: Io = consoleIo): Promise<void> {
   io.out('');
   io.out('Waiting on the line… (Ctrl-C to hang up)');
 
-  const reason = await streamUntilDone(client, io.out, {
+  const result = await streamUntilDone(client, io.out, {
     send: io.input ? { from, callId, input: io.input, peer: null } : undefined,
   });
-  io.out(`\n${reason}`);
+  finishCall(client, callId, result, io);
   clearSession();
   client.close();
 }
@@ -104,7 +131,7 @@ export async function call(topic: string, io: Io = consoleIo): Promise<void> {
   // inbound activity OR an explicit peer-joined is our "picked up" signal. We
   // print "patched through" on the first message and then keep streaming.
   let announced = false;
-  const reason = await streamUntilDone(client, io.out, {
+  const result = await streamUntilDone(client, io.out, {
     send: io.input ? { from, callId, input: io.input, peer: null } : undefined,
     onMessage: () => {
       if (!announced) {
@@ -113,7 +140,7 @@ export async function call(topic: string, io: Io = consoleIo): Promise<void> {
       }
     },
   });
-  io.out(`\n${reason}`);
+  finishCall(client, callId, result, io);
   clearSession();
   client.close();
 }
@@ -143,10 +170,10 @@ export async function join(rawCode: string, io: Io = consoleIo): Promise<void> {
   io.out(`✅ Patched through to ${peer}. You are on the line.`);
   io.out('Type a message + Enter to send; inbound queries appear below. (Ctrl-C to hang up)');
 
-  const reason = await streamUntilDone(client, io.out, {
+  const result = await streamUntilDone(client, io.out, {
     send: io.input ? { from, callId, input: io.input, peer } : undefined,
   });
-  io.out(`\n${reason}`);
+  finishCall(client, callId, result, io);
   clearSession();
   client.close();
 }
@@ -173,9 +200,8 @@ export async function listen(io: Io = consoleIo): Promise<void> {
   io.out(`👂 Listening on the line for: ${session.topic}`);
   io.out('Inbound queries appear below, fenced as untrusted data. (Ctrl-C to stop)');
 
-  const reason = await streamUntilDone(client, io.out);
-  io.out(`\n${reason}`);
-  void callId;
+  const result = await streamUntilDone(client, io.out);
+  finishCall(client, callId, result, io);
   client.close();
 }
 
@@ -211,4 +237,41 @@ export async function hangup(io: Io = consoleIo): Promise<void> {
 
   clearSession();
   io.out('📴 Hung up.');
+}
+
+/**
+ * `history` — list past calls and their outcomes (from ~/.switchboard/calls/).
+ * This is how an away human catches up on what their agent concluded.
+ */
+export async function history(io: Io = consoleIo): Promise<void> {
+  const reports = listReports();
+  if (reports.length === 0) {
+    io.out('No past calls yet.');
+    return;
+  }
+  io.out(`Past calls (${reports.length}):`);
+  for (const r of reports) {
+    io.out(`  ${r.endedAt}  ${outcomeLabel(r.outcome)}  with ${r.peer ?? '?'}  "${r.topic}"`);
+    io.out(`      switchboard report ${r.callId}`);
+  }
+}
+
+/**
+ * `report [callId]` — show a past call's report + full transcript. Defaults to
+ * the most recent call.
+ */
+export async function showReport(callId: string | undefined, io: Io = consoleIo): Promise<void> {
+  const report = callId ? readReport(callId) : listReports()[0];
+  if (!report) {
+    io.out(callId ? `No report for call ${callId}.` : 'No past calls yet.');
+    return;
+  }
+  io.out(renderReport(report));
+  io.out('\n──── transcript ────');
+  if (report.transcript.length === 0) {
+    io.out('(no messages)');
+  }
+  for (const e of report.transcript) {
+    io.out(`[${e.type}] ${e.from}: ${e.content}`);
+  }
 }
