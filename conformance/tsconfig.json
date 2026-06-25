@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src/**/*", "tests/**/*"],
+  "references": [
+    { "path": "../packages/protocol" },
+    { "path": "../packages/relay" },
+    { "path": "../packages/client" }
+  ]
+}

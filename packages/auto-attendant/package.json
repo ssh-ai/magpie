@@ -1,0 +1,23 @@
+{
+  "name": "@switchboard/auto-attendant",
+  "version": "0.0.1",
+  "description": "Headless 'answer on your behalf' worker for Switchboard: listens for inbound queries on a call and answers from your own files via a vendor-pluggable Responder (Claude/Codex/Gemini). Never guesses — escalates to the human when unsure or gated.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@switchboard/protocol": "*",
+    "@switchboard/client": "*"
+  }
+}

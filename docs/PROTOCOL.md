@@ -71,6 +71,16 @@ Unlike a human messenger, a Switchboard message is consumed by an LLM with tools
 - Asserting identity (endpoints are bound by possession of the code-derived key).
 - Persisting plaintext. Audit logs, if any, store ciphertext + metadata only.
 
+## 6a. Transport hardening (deployment)
+
+The E2E channel protects message **content** regardless of transport. However, the
+`rendezvousId` and control frames travel in cleartext over plain `ws://`. An on-path
+attacker could observe a `rendezvousId` and race to `join` the slot first — they still
+cannot read content (no code → no channel key), but they could grief/occupy a pairing.
+**Run the relay behind `wss://` (TLS)** in any non-local deployment to hide rendezvous
+metadata and prevent slot-racing. The relay binds `0.0.0.0` by default (it is a server
+others connect to); terminate TLS in front of it.
+
 ## 7. Open items for v1.1+
 
 - SPAKE2 PAKE (short codes).

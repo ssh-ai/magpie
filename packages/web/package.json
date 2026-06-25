@@ -1,0 +1,13 @@
+{
+  "name": "@switchboard/web",
+  "version": "0.0.1",
+  "description": "The non-developer onboarding surface: a single static page that joins a Switchboard call by pairing code and watches the live transcript. No framework, no build step.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node ./src/serve.ts",
+    "serve": "node ./src/serve.ts"
+  },
+  "//": "Zero runtime dependencies on purpose. The page is plain HTML + ES-module JS served by a tiny dependency-free node http server. Node >=22 runs the .ts server directly (type-stripping); on older node use `node --import tsx ./src/serve.ts`."
+}

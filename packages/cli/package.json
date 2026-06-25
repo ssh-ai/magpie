@@ -1,0 +1,28 @@
+{
+  "name": "@switchboard/cli",
+  "version": "0.0.1",
+  "description": "Switchboard CLI: the non-developer-simple surface. start｜join｜call｜listen｜hangup over a short pairing code.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "switchboard": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node ./dist/bin.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@switchboard/client": "*",
+    "@switchboard/protocol": "*",
+    "commander": "^12.1.0"
+  }
+}

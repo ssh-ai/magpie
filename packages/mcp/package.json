@@ -1,0 +1,29 @@
+{
+  "name": "@switchboard/mcp",
+  "version": "0.0.1",
+  "description": "Switchboard MCP server: exposes sb_start/sb_join/sb_ask/sb_listen/sb_answer/sb_hangup tools so any MCP-capable agent (Claude Code, Codex, Gemini CLI) can patch through to another person's agent. Inbound peer text is always fenced as untrusted data.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "switchboard-mcp": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node ./dist/bin.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@switchboard/client": "*",
+    "@switchboard/protocol": "*",
+    "zod": "^3.25.0"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@switchboard/conformance",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Switchboard behavioral + security conformance suite. Drives @switchboard/relay and @switchboard/client in-process and ports the six prior-art behavioral scenarios from claude-code-session-bridge.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@switchboard/protocol": "*",
+    "@switchboard/relay": "*",
+    "@switchboard/client": "*"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

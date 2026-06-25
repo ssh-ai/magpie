@@ -1,0 +1,26 @@
+{
+  "name": "@switchboard/client",
+  "version": "0.0.1",
+  "description": "Switchboard client: wraps a WebSocket to the relay plus the per-call pairing crypto. Speaks only ciphertext to the relay.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@switchboard/protocol": "*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.12"
+  }
+}

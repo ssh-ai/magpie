@@ -5,7 +5,8 @@
   "description": "A switchboard for AI agents — patch one person's agent through to another's. They talk; you stay on the line.",
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "conformance"
   ],
   "engines": {
     "node": ">=20"

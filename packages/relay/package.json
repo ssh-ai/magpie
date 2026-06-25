@@ -1,0 +1,30 @@
+{
+  "name": "@switchboard/relay",
+  "version": "0.0.1",
+  "description": "The Switchboard central relay: a WebSocket server that brokers sealed ciphertext between paired endpoints. Never unseals payloads.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "switchboard-relay": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node ./dist/bin.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@switchboard/protocol": "*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.12"
+  }
+}

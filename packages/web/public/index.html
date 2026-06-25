@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Switchboard — Join a call</title>
+    <!--
+      The non-developer onboarding surface. One page, no framework, no build step.
+      You paste the short code a teammate sent you, click Join, and watch the two
+      agents talk on a live transcript. Two buttons: approve a tool action, hang up.
+
+      Honest-crypto note: the relay only ever sees ciphertext. This page can JOIN
+      for real (the rendezvous id is a plain HKDF the browser can compute), but it
+      CANNOT yet read transcript text or send a sealed approval, because that needs
+      a JS port of `channelFromCode` (AES-256-GCM over an HKDF-derived key). See the
+      big TODO in app.js. Until that port lands, the transcript shows frame
+      metadata (who/when/how big), never faked plaintext.
+    -->
+    <!--RELAY_URL-->
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --panel-2: #1d212b;
+        --ink: #e7ebf2;
+        --muted: #9aa4b2;
+        --line: #2a2f3a;
+        --accent: #4f8cff;
+        --good: #3ecf8e;
+        --warn: #ffb454;
+        --bad: #ff6b6b;
+        --radius: 14px;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 600px at 50% -10%, #1a2030 0%, var(--bg) 60%);
+        color: var(--ink);
+        font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+      header { text-align: center; margin-bottom: 28px; }
+      header .logo { font-size: 34px; }
+      header h1 { margin: 8px 0 4px; font-size: 26px; letter-spacing: -0.02em; }
+      header p { margin: 0; color: var(--muted); }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .card + .card { margin-top: 18px; }
+
+      label { display: block; font-weight: 600; margin: 0 0 6px; }
+      .hint { color: var(--muted); font-size: 13px; margin: 4px 0 14px; }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 14px 16px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: var(--ink);
+        font-size: 17px;
+        outline: none;
+      }
+      input[type="text"]:focus { border-color: var(--accent); }
+      #code {
+        font: 600 22px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.14em;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .row { display: flex; gap: 12px; flex-wrap: wrap; }
+      .row > * { flex: 1 1 220px; }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 600;
+        padding: 14px 18px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.04s ease, filter 0.15s ease, background 0.15s ease;
+      }
+      button:hover { filter: brightness(1.08); }
+      button:active { transform: translateY(1px); }
+      button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+      button.primary { background: var(--accent); border-color: transparent; color: #fff; }
+      button.approve { background: var(--good); border-color: transparent; color: #06281b; }
+      button.danger { background: var(--bad); border-color: transparent; color: #2a0a0a; }
+
+      .status {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 14px; color: var(--muted);
+      }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+      .dot.live { background: var(--good); box-shadow: 0 0 0 4px rgba(62, 207, 142, 0.16); }
+      .dot.connecting { background: var(--warn); }
+      .dot.dead { background: var(--bad); }
+
+      #transcript {
+        margin-top: 8px;
+        max-height: 48vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .frame {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--accent);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .frame .meta { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); }
+      .frame .who { color: var(--ink); font-weight: 600; }
+      .frame .sealed { margin-top: 6px; font: 12px/1.4 ui-monospace, Menlo, monospace; color: var(--muted); word-break: break-all; }
+      .frame.system { border-left-color: var(--warn); }
+      .frame.system .body { color: var(--warn); }
+      .frame.bye { border-left-color: var(--bad); }
+      .frame.bye .body { color: var(--bad); }
+      .empty { color: var(--muted); text-align: center; padding: 26px 0; }
+
+      .controls { display: flex; gap: 12px; margin-top: 16px; }
+      .controls button { flex: 1; }
+
+      .footnote { color: var(--muted); font-size: 12.5px; margin-top: 14px; }
+      .footnote code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
+      .hidden { display: none !important; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="logo">☎️</div>
+        <h1>Join the call</h1>
+        <p>A teammate's agent is waiting. Paste the code they sent you.</p>
+      </header>
+
+      <!-- STEP 1 — join by code. This is the whole onboarding: a code box + a button. -->
+      <section class="card" id="joinCard">
+        <label for="code">Pairing code</label>
+        <input
+          id="code"
+          type="text"
+          inputmode="latin"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="K7F3-9M2P-XQ4R"
+          maxlength="14"
+          aria-label="Pairing code"
+        />
+        <p class="hint">Looks like <strong>K7F3-9M2P-XQ4R</strong>. Dashes and capitals don't matter.</p>
+
+        <details>
+          <summary class="hint" style="cursor: pointer">Who am I? (optional)</summary>
+          <div style="margin-top: 10px">
+            <input id="me" type="text" autocomplete="off" spellcheck="false" placeholder="@you/watch" value="@guest/watch" aria-label="Your extension" />
+            <p class="hint">Your extension address, like <code>@you/watch</code>. Leave the default if unsure.</p>
+            <input id="relay" type="text" autocomplete="off" spellcheck="false" placeholder="ws://localhost:8787" aria-label="Relay URL" />
+            <p class="hint">Relay address. Pre-filled if your host set one.</p>
+          </div>
+        </details>
+
+        <div class="row" style="margin-top: 12px">
+          <button id="joinBtn" class="primary">Join call</button>
+          <span class="status" style="justify-content: center">
+            <span class="dot" id="dot"></span>
+            <span id="statusText">Not connected</span>
+          </span>
+        </div>
+        <p class="footnote" id="joinError" style="color: var(--bad)"></p>
+      </section>
+
+      <!-- STEP 2 — the live call. Hidden until joined. -->
+      <section class="card hidden" id="callCard">
+        <div class="meta-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px">
+          <div>
+            <div style="font-weight: 700">On the call</div>
+            <div class="hint" style="margin: 2px 0 0" id="callMeta">connecting…</div>
+          </div>
+          <span class="status"><span class="dot live" id="liveDot"></span><span id="liveText">Live</span></span>
+        </div>
+
+        <h3 style="margin: 14px 0 0; font-size: 15px">Transcript</h3>
+        <p class="hint" style="margin-top: 2px">
+          Every line the two agents exchange shows up here in real time.
+        </p>
+        <div id="transcript">
+          <div class="empty" id="emptyState">Waiting for the agents to start talking…</div>
+        </div>
+
+        <div class="controls">
+          <button id="approveBtn" class="approve" title="Let the agent run a tool it asked permission for">
+            ✅ Approve tool action
+          </button>
+          <button id="hangupBtn" class="danger" title="End the call for both sides">
+            📴 Hang up
+          </button>
+        </div>
+
+        <p class="footnote">
+          <strong>Heads up:</strong> this onboarding build shows transcript
+          <em>metadata</em> (who sent it, when, how big) — not the decrypted text — and
+          the approve button is wired but not yet sealed. The relay never sees
+          plaintext, and neither does this page until the
+          <code>channelFromCode</code> browser port lands.
+          <span id="cryptoStatus"></span>
+        </p>
+      </section>
+
+      <p class="footnote" style="text-align: center; margin-top: 26px">
+        Switchboard · the relay only ever brokers ciphertext it can't read.
+      </p>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
