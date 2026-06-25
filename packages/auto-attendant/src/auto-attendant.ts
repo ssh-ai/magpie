@@ -87,6 +87,14 @@ export interface AutoAttendantOptions {
  * so a human can take over. The model's uncertainty is treated as a STOP, never
  * a license to bluff.
  */
+/** Short reason shown to the peer when the attendant declines a question. */
+const DECLINE_HINT: Record<EscalateReason, string> = {
+  'low-confidence': "it's outside my project scope or my files don't cover it",
+  'action-blocked': "that action isn't permitted by my policy",
+  'responder-error': 'my agent hit an error',
+  'turn-cap': 'this call has reached its turn limit',
+};
+
 export class AutoAttendant extends TypedEmitter<AutoAttendantEvents> {
   readonly #self: Extension;
   readonly #callId: string;
@@ -151,10 +159,10 @@ export class AutoAttendant extends TypedEmitter<AutoAttendantEvents> {
 
     // Gate the action under policy. The auto-attendant only ever needs to read
     // its OWN files; it must never run tools on a peer's say-so. If the gate
-    // would block, we escalate rather than guess.
+    // would block, decline in-band (don't guess) but stay on the line.
     const gate = gateAction('readOwnFiles', this.#policy);
     if (!gate.allowed) {
-      await this.#escalate('action-blocked', gate.reason, msg);
+      await this.#decline('action-blocked', gate.reason, msg);
       return;
     }
 
@@ -169,13 +177,15 @@ export class AutoAttendant extends TypedEmitter<AutoAttendantEvents> {
       confident = result.confident;
       text = result.text;
     } catch (err) {
-      await this.#escalate('responder-error', String(err), msg);
+      await this.#decline('responder-error', String(err), msg);
       return;
     }
 
-    // The core rule: low confidence is a STOP, not a bluff. Escalate.
+    // The core rule: low confidence is a STOP, not a bluff. But a single
+    // unanswerable question (e.g. out of the agent's project scope) must NOT
+    // kill the call — decline it in-band, page the human, and stay on the line.
     if (!confident) {
-      await this.#escalate('low-confidence', 'responder was not confident', msg);
+      await this.#decline('low-confidence', 'responder was not confident', msg);
       return;
     }
 
@@ -196,7 +206,36 @@ export class AutoAttendant extends TypedEmitter<AutoAttendantEvents> {
     this.emit('answered', { callId: this.#callId, question: msg.content, answer: text });
   }
 
-  /** Hang up with a reason and page the human. Idempotent. */
+  /**
+   * Decline ONE question in-band, page the human, and STAY on the line so the
+   * conversation continues. Used when the agent can't answer confidently (e.g.
+   * out of project scope), the action is gated, or the model errors — none of
+   * which should kill the call. Counts as a turn (bounds repeated declines).
+   */
+  async #decline(reason: EscalateReason, detail: string, msg: Message): Promise<void> {
+    if (this.#done) return;
+    this.#turns += 1;
+    const reply: Message = {
+      v: PROTOCOL_VERSION,
+      id: newMessageId(),
+      callId: this.#callId,
+      from: this.#self,
+      to: msg.from,
+      type: 'response',
+      ts: new Date().toISOString(),
+      turn: msg.turn + 1,
+      inReplyTo: msg.id,
+      content: `⚠️ I can't answer that confidently — ${DECLINE_HINT[reason]}. I've flagged it for my operator.`,
+    };
+    try {
+      await this.#transport.send(this.#callId, reply);
+    } catch {
+      // best effort — still page the human below
+    }
+    this.emit('escalate', { callId: this.#callId, reason, detail, question: msg.content });
+  }
+
+  /** Hang up with a reason and page the human. Idempotent. (Terminal: turn-cap.) */
   async #escalate(reason: EscalateReason, detail: string, msg?: Message): Promise<void> {
     if (this.#done) return;
     this.#done = true;

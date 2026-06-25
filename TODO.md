@@ -25,6 +25,11 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       teammate" framing replaces the over-strict fence that made the agent refuse
       a legitimate teammate question. (Still: never executes embedded instructions,
       read-only, cwd-scoped, fail-closed CONFIDENCE.) ✅
+- [x] **Out-of-scope / low-confidence no longer kills the call.** The attendant
+      now DECLINES in-band ("⚠️ I can't answer that — outside my project scope; I've
+      flagged it for my operator") and STAYS on the line; only the turn cap / an
+      explicit hangup ends a call. ✅ verified live (in-scope → real answer;
+      `~/Desktop` → polite decline, call stayed alive).
 - [ ] **Persistent agent session** per side instead of fresh `claude -p` per turn
       (token efficiency; keeps conversation context across turns).
 - [ ] **Auto-resolve**: the agent decides the matter is settled and calls resolve
@@ -32,10 +37,11 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
 - [ ] **Terse, intent-tagged, reference-based** messages (not verbose NL);
       minimize the per-message fence overhead.
 
-## P0 — Observability / waiting UX (user-flagged)
-- [ ] **"Peer is thinking…" / progress signal** while waiting for the other agent.
-      Today the asker sees nothing for ~30–60s (real model latency) → feels stuck.
-      Need a status channel (e.g. a `status` message type or a typing indicator).
+## P1 — Observability / waiting UX (user-flagged)
+- [x] **Basic waiting feedback** — the CLI now prints "⏳ sent — waiting for the
+      other agent…" on send, so the ~30s model latency no longer looks frozen.
+- [ ] **Full "peer is thinking…" signal** from the attendant side (a `system`/status
+      frame the moment it starts working), richer than the local asker-side line.
 - [ ] **Live transcript "watch" view** — see both sides' messages + status in real
       time (also the trust/audit surface).
 

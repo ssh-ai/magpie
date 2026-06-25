@@ -123,9 +123,10 @@ export function streamUntilDone(
           content: text,
         };
         turn += 1;
-        client.send(s.callId, msg).catch((e: unknown) => {
-          out(`✗ send failed: ${e instanceof Error ? e.message : String(e)}`);
-        });
+        client
+          .send(s.callId, msg)
+          .then(() => out('  ⏳ sent — waiting for the other agent (a real model may take ~30s)…'))
+          .catch((e: unknown) => out(`✗ send failed: ${e instanceof Error ? e.message : String(e)}`));
       });
     }
   });
