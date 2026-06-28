@@ -185,6 +185,19 @@ export function registerSwitchboardTools(server: McpServer, store: SessionStore)
               : `No inbound query on ${callId} before the timeout. Call sb_listen again to keep waiting.`,
           );
         }
+        // The peer declared a firm conclusion: the call is over. Report it; do
+        // not answer further.
+        if (msg.type === 'resolve') {
+          return ok(
+            [
+              `The peer has RESOLVED call ${callId}. The conversation is concluded — do not call sb_answer again.`,
+              ``,
+              renderInbound(msg),
+              ``,
+              `Report this conclusion to your human.`,
+            ].join('\n'),
+          );
+        }
         // Surface the message id so the model can pass it to sb_answer as inReplyTo.
         return ok(
           [
@@ -226,6 +239,49 @@ export function registerSwitchboardTools(server: McpServer, store: SessionStore)
         const session = store.require(callId);
         const sent = await session.answer(inReplyTo, text);
         return ok(`Answer sent (message ${sent.id}, in reply to ${inReplyTo}).`);
+      }),
+  );
+
+  // -- sb_resolve ------------------------------------------------------------
+  server.registerTool(
+    'sb_resolve',
+    {
+      title: 'Switchboard: resolve (conclude) the call',
+      description:
+        'Declare that a FIRM CONCLUSION has been reached with the peer and END ' +
+        'the call. This is the terminal move of a back-and-forth: use it as soon ' +
+        'as nothing is left to resolve — whether you AGREE the matter is settled ' +
+        'OR you have a firm verdict (e.g. "spec NOT met: requirement 2 missing"). ' +
+        '`summary` is your one- or two-line conclusion; it is sent to the peer so ' +
+        'they learn the outcome, and it becomes both sides\' end-of-call report. ' +
+        'Do NOT keep talking after a conclusion, and do NOT resolve prematurely ' +
+        'while real questions remain. Returns the call report.',
+      inputSchema: {
+        callId: z.string().min(1).describe('The callId from sb_start or sb_join.'),
+        summary: z
+          .string()
+          .min(1)
+          .max(8 * 1024)
+          .describe(
+            'Your firm conclusion, e.g. "MET: both requirements confirmed (PER_TRADE_RISK=0.02 at risk.py:4; max 3 at positions.py:3)".',
+          ),
+      },
+    },
+    async ({ callId, summary }) =>
+      guarded(async () => {
+        const session = store.require(callId);
+        const report = await session.resolve(summary);
+        store.forget(callId);
+        const turns = report?.turns ?? 0;
+        return ok(
+          [
+            `Call ${callId} resolved and closed.`,
+            ``,
+            `CONCLUSION: ${summary}`,
+            ``,
+            `(${turns} message(s) exchanged. Report this conclusion to your human.)`,
+          ].join('\n'),
+        );
       }),
   );
 

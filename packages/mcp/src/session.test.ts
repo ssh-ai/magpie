@@ -20,15 +20,35 @@ const SELF = '@chris/impl';
 const PEER = '@sora/strategy';
 
 /** A SwitchboardClient stub that only records the messages a session sends. */
-function fakeClient(): { client: SwitchboardClient; sent: Message[] } {
+function fakeClient(): {
+  client: SwitchboardClient;
+  sent: Message[];
+  resolved: { callId: string; summary: string }[];
+} {
   const sent: Message[] = [];
+  const resolved: { callId: string; summary: string }[] = [];
   const client = {
     send: vi.fn(async (_callId: string, msg: Message) => {
       sent.push(msg);
     }),
     hangup: vi.fn(async () => {}),
+    resolve: vi.fn(async (callId: string, summary: string) => {
+      resolved.push({ callId, summary });
+    }),
+    buildReport: vi.fn((callId: string, outcome: string) => ({
+      callId,
+      topic: 'test',
+      me: SELF,
+      peer: PEER,
+      outcome,
+      summary: resolved.at(-1)?.summary ?? null,
+      turns: 3,
+      startedAt: new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      transcript: [],
+    })),
   } as unknown as SwitchboardClient;
-  return { client, sent };
+  return { client, sent, resolved };
 }
 
 function newSession(client: SwitchboardClient): CallSession {
@@ -162,6 +182,45 @@ describe('CallSession.answer sends a response to a specific query', () => {
     expect(sentMsg.from).toBe(SELF);
     expect(sentMsg.to).toBe(PEER);
     expect(sentMsg.content).toBe('here is the schema');
+  });
+});
+
+describe('CallSession.resolve concludes the call (the agree-loop terminal move)', () => {
+  it('sends the summary via client.resolve, returns the report, and closes', async () => {
+    const { client, resolved } = fakeClient();
+    const session = newSession(client);
+
+    const report = await session.resolve('MET: both requirements confirmed');
+    expect(resolved).toEqual([{ callId: CALL_ID, summary: 'MET: both requirements confirmed' }]);
+    expect(report?.outcome).toBe('resolved');
+    expect(report?.summary).toBe('MET: both requirements confirmed');
+    expect(session.closed).toBe(true);
+    // No further sends allowed once resolved.
+    await expect(session.ask('again?')).rejects.toThrow(/closed/);
+  });
+});
+
+describe('CallSession.markResolved surfaces the peer conclusion to sb_listen', () => {
+  it('delivers a resolve marker (type=resolve, content=summary) to a parked listener and closes', async () => {
+    const { client } = fakeClient();
+    const session = newSession(client);
+
+    const waiter = session.nextInbound(2000);
+    session.markResolved('NOT MET: requirement 2 missing');
+    const got = await waiter;
+    expect(got?.type).toBe('resolve');
+    expect(got?.content).toBe('NOT MET: requirement 2 missing');
+    expect(session.closed).toBe(true);
+  });
+
+  it('queues the resolve marker when no listener is parked', async () => {
+    const { client } = fakeClient();
+    const session = newSession(client);
+
+    session.markResolved('agreed: ship it');
+    const got = await session.nextInbound(1000);
+    expect(got?.type).toBe('resolve');
+    expect(got?.content).toBe('agreed: ship it');
   });
 });
 

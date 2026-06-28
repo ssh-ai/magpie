@@ -4,7 +4,7 @@ import {
   PROTOCOL_VERSION,
   DEFAULT_MAX_TURNS,
 } from '@switchboard/protocol';
-import type { Extension, Message, MessageType } from '@switchboard/protocol';
+import type { CallReport, Extension, Message, MessageType } from '@switchboard/protocol';
 
 /**
  * Session layer that sits between the MCP tools and the raw SwitchboardClient.
@@ -235,6 +235,39 @@ export class CallSession {
     return msg;
   }
 
+  /**
+   * Declare a FIRM CONCLUSION reached with the peer: sends a `resolve` message
+   * (carrying `summary`) so the peer learns the conclusion, ends the call, and
+   * returns the end-of-call report built from the transcript. Used by
+   * `sb_resolve`. This is the autonomous agree-loop's terminal move — call it
+   * once nothing is left to resolve (agreement, or a firm pass/fail verdict).
+   */
+  async resolve(summary: string): Promise<CallReport | null> {
+    this.#assertOpen();
+    await this.#client.resolve(this.callId, summary);
+    const report = this.#client.buildReport(this.callId, 'resolved');
+    this.markClosed('resolved');
+    return report;
+  }
+
+  /**
+   * The PEER declared the call resolved. Surface their summary to a parked (or
+   * next) `sb_listen` so the local agent can report the conclusion to its human,
+   * then close. Wired from the client's `onResolved` by the SessionStore.
+   */
+  markResolved(summary: string): void {
+    if (this.#closed) return;
+    const marker = this.#resolveMarker(summary);
+    const listener = this.#waitingListener;
+    if (listener) {
+      this.#waitingListener = null;
+      listener(marker);
+    } else {
+      this.#inbound.push(marker);
+    }
+    this.markClosed('resolved');
+  }
+
   /** Tear down this call on the wire. */
   async hangup(): Promise<void> {
     if (!this.#closed) {
@@ -281,6 +314,22 @@ export class CallSession {
       turn: this.#turn,
       inReplyTo,
       content,
+    };
+  }
+
+  /** Synthetic, never-sent marker carrying the peer's resolution summary. */
+  #resolveMarker(summary: string): Message {
+    return {
+      v: PROTOCOL_VERSION,
+      id: newMessageId(),
+      callId: this.callId,
+      from: this.peer ?? this.self,
+      to: this.self,
+      type: 'resolve',
+      ts: new Date().toISOString(),
+      turn: this.#turn,
+      inReplyTo: null,
+      content: summary,
     };
   }
 
@@ -348,6 +397,12 @@ export class SessionStore {
         const session = this.#sessions.get(callId);
         if (session) session.peer = peer;
       });
+      client.onResolved((callId, summary) => {
+        // The peer concluded the call; surface the summary to sb_listen so the
+        // local agent can report it, then close the session.
+        const session = this.#sessions.get(callId);
+        if (session) session.markResolved(summary);
+      });
       this.#client = client;
       this.#connecting = null;
       return client;
@@ -409,6 +464,11 @@ export class SessionStore {
     const s = this.#sessions.get(callId);
     if (!s) return;
     await s.hangup();
+    this.#sessions.delete(callId);
+  }
+
+  /** Drop a call from the map without re-hanging-up (already closed/resolved). */
+  forget(callId: string): void {
     this.#sessions.delete(callId);
   }
 

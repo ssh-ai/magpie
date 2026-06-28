@@ -32,6 +32,11 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
 - **Resolution + report-on-termination**: `/resolve`, CALL REPORT, persisted to
   `~/.switchboard/calls/`, `history`/`report` recall. Verified live cross-machine.
 - Proved a real `claude -p` agent can answer headlessly from its own files.
+- **MCP in-session verified (2026-06-28)**: a real Claude Code session loaded
+  `@switchboard/mcp` via `--mcp-config` and patched through both directions over
+  the relay — asker (`sb_join`/`sb_ask`) and answerer (`sb_listen`/read-own-repo/
+  `sb_answer`), no human typing, peer text fenced. Same binary registers in
+  Codex CLI / Antigravity. This is the cross-vendor substrate (slash/skill = sugar).
 
 ---
 
@@ -63,13 +68,24 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       - [x] Step 1: AutoAttendant picks `liveResponder` when `isLive()` is true,
             else the file `responder`; `goOnDuty`/`dutyPresence` give a file-mtime
             heartbeat presence with no daemon/IPC. (19 auto-attendant tests.)
-      - [ ] Step 2: wire a real LIVE responder = a running Claude Code session
-            (via the Switchboard MCP) answering from its in-memory context, and
-            `switchboard-attend` ergonomics (`--on-duty` heartbeat, handle).
+      - [x] Step 2: a LIVE responder = a running Claude Code session answering
+            via the Switchboard MCP is verified (sb_listen → read own repo →
+            sb_answer, in-session). Still optional: `switchboard-attend`
+            ergonomics (`--on-duty` heartbeat, handle) for the file-fallback side.
+- [x] **In-session agree-loop via MCP (A).** Added a 7th tool `sb_resolve(callId,
+      summary)` so a LIVE agent can conclude a call itself (sends the verdict,
+      ends the call, returns the report). The driving behavior is in the MCP
+      server `instructions` (loop `sb_ask` until firm conclusion → `sb_resolve`;
+      responder loops `sb_listen`/`sb_answer` until closed). A peer's resolve is
+      surfaced to `sb_listen` so the other side learns the conclusion. ✅ verified
+      live: a real Claude Code driver session read its own SPEC.md, looped
+      `sb_ask` twice (one per requirement), evaluated vs spec, and concluded with
+      `sb_resolve` "MET" — no human typing. (scratchpad `mcp-loop.mjs`; 12 mcp tests.)
 - [ ] **Persistent agent session** per side instead of fresh `claude -p` per turn
       (token efficiency; keeps conversation context across turns).
-- [ ] **Auto-resolve**: the agent decides the matter is settled and calls resolve
-      with a generated summary — currently a human types `/resolve`.
+- [~] **Auto-resolve**: DONE for the in-session MCP path (the agent calls
+      `sb_resolve` itself). Headless `AutoDriver` already auto-resolves too. The
+      remaining bit is the interactive CLI still needing a human `/resolve`.
 - [ ] **Terse, intent-tagged, reference-based** messages (not verbose NL);
       minimize the per-message fence overhead.
 
