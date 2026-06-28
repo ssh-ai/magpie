@@ -18,6 +18,8 @@ export interface CallTransport {
   onHangup(cb: (reason: string) => void): void;
   send(callId: string, msg: Message): Promise<void>;
   hangup(callId: string): Promise<void>;
+  /** Conclude the call with a summary (send a resolve message, then hang up). */
+  resolve(callId: string, summary: string): Promise<void>;
 }
 
 /** Why the attendant stopped answering and handed off to the human. */

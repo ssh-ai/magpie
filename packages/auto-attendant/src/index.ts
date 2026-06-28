@@ -27,3 +27,15 @@ export type { ShellResponderOptions, RunFn } from './adapters.js';
 export { TypedEmitter } from './events.js';
 
 export { goOnDuty, dutyPresence } from './presence.js';
+
+export { AutoDriver } from './driver.js';
+export type {
+  AutoDriverOptions,
+  DriverEvents,
+  DriverBrain,
+  DriverInput,
+  DriverDecision,
+  DriverEscalateReason,
+} from './driver.js';
+export { ClaudeDriver, buildDriverPrompt, parseDriverDecision } from './driver-adapters.js';
+export type { ClaudeDriverOptions } from './driver-adapters.js';

@@ -36,6 +36,15 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
 ---
 
 ## P0 — Mode ② : real agent autonomy (the product)
+- [x] **THE core: autonomous agree-loop (S2).** `AutoDriver` (drives a goal:
+      ask → evaluate peer reply vs its OWN spec/files → push back → conclude) +
+      `ClaudeDriver`, paired with the existing `AutoAttendant`/`ClaudeResponder`.
+      Two real claude agents converse multi-turn, no human typing, and reach a
+      firm AGREE conclusion (pass OR fail) with evidence, then resolve+report.
+      ✅ verified live (spec 2%+max-3 vs impl → agreed "MET" with file:line evidence).
+      Fixes found live: AGREE = "conclusion reached (pass/fail)" not "passed" (or it
+      loops); responder must enumerate files before claiming absence (false-negative).
+  - [ ] v1.1: mutual confirm (B also agrees before close) + no-progress escalate.
 - [x] **Real responder productized** in `@switchboard/auto-attendant`:
       `ClaudeResponder` runs the official CLI with stdin closed + read-only tools
       (`--allowedTools LS Glob Grep Read "Bash(ls:*)"`), `cwd`-scoped; added a

@@ -48,6 +48,11 @@ class FakeTransport implements CallTransport {
   async hangup(_callId: string): Promise<void> {
     this.hangups += 1;
   }
+  resolves: { callId: string; summary: string }[] = [];
+  async resolve(callId: string, summary: string): Promise<void> {
+    this.resolves.push({ callId, summary });
+    this.hangups += 1;
+  }
 
   /** Test helper: simulate the relay delivering an inbound message. */
   deliver(msg: Message): void {
