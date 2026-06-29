@@ -1,0 +1,20 @@
+[package]
+name = "switchboard-cli"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+description = "Switchboard CLI — the non-developer-simple `switchboard` command (start｜join｜history｜report) on top of switchboard-client. Mirror of packages/cli (TS reference)."
+
+[[bin]]
+name = "switchboard"
+path = "src/main.rs"
+
+[dependencies]
+switchboard-client = { path = "../switchboard-client" }
+switchboard-protocol = { path = "../switchboard-protocol" }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "signal", "sync"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

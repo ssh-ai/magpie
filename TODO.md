@@ -49,7 +49,11 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       ✅ verified live (spec 2%+max-3 vs impl → agreed "MET" with file:line evidence).
       Fixes found live: AGREE = "conclusion reached (pass/fail)" not "passed" (or it
       loops); responder must enumerate files before claiming absence (false-negative).
-  - [ ] v1.1: mutual confirm (B also agrees before close) + no-progress escalate.
+  - [ ] v1.1: mutual confirm (B also agrees before close) + no-progress escalate. **[PARKED]**
+  - [ ] Cross-vendor live test: Claude ↔ Codex CLI over the same MCP (register
+        `switchboard-mcp` in `~/.codex/config.toml`; proves vendor-neutral claim). **[PARKED]**
+  - [ ] `/sb` slash-command / Skill wrapper for Claude Code (thin UX over the MCP
+        tools: `/sb call`, `/sb join <code>`). Optional sugar; MCP works without it. **[PARKED]**
 - [x] **Real responder productized** in `@switchboard/auto-attendant`:
       `ClaudeResponder` runs the official CLI with stdin closed + read-only tools
       (`--allowedTools LS Glob Grep Read "Bash(ls:*)"`), `cwd`-scoped; added a
@@ -88,6 +92,72 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       remaining bit is the interactive CLI still needing a human `/resolve`.
 - [ ] **Terse, intent-tagged, reference-based** messages (not verbose NL);
       minimize the per-message fence overhead.
+
+## P0 — Rust migration (efficiency / distribution) — decided 2026-06-29
+
+**Why Rust, honestly:** the core call path is LLM-bound (~30s/turn), so Rust does
+NOT speed up a conversation. The real wins are (1) **distribution** — a single
+static binary relay+CLI (`brew install`, no Node runtime), serving the easy-
+onboarding goal; (2) **relay at scale** — tokio, no GC tail-latency, KB/conn not
+tens-of-KB; (3) smaller attack surface on the one publicly-exposed component.
+The bigger *efficiency* levers are NOT the language — token efficiency
+(persistent sessions) + terse/reference protocol dwarf any rewrite. So:
+
+**NOT a big-bang rewrite. Surgical, phased, ROI-ordered.** Language boundary =
+the wire protocol (ws + base64 sealed frames), so Rust and TS components
+interop natively; we can swap one package at a time.
+
+Sizes (non-test src LOC): protocol 337 · relay 673 · client 598 · mcp 964 ·
+auto-attendant 948 · cli 708. Durable wire core (protocol+relay+client = ~1.6k)
+is the Rust target; SDK/agent-glue (mcp+auto-attendant) stays TS for now.
+
+**✅ ALL THREE PHASES DONE + tested (2026-06-29, via ultracode workflow — 14 agents).**
+Verified independently in the main loop: Rust **59** tests, TS **109** tests
+(no regression), TS-client⇄Rust-relay interop 7/7, Rust-CLI⇄TS-peer full E2E
+(HKDF rendezvous + AES-256-GCM byte-identical BOTH directions, reports match).
+Release binaries: CLI 1.85 MB stripped, relay 1.04 MB; cold-start **18× faster**
+than Node (3.6 ms vs 66 ms). Test plan: `specs/TEST_PLAN.md`. Crypto corpus:
+`specs/fixtures/crypto-vectors.json`.
+
+- [x] **Phase 1 — Rust `relay`** (`rust/crates/switchboard-relay`). Crypto-free
+      drop-in; wire-identical to the TS relay (NO changes needed to pass). 13 unit
+      tests + `conformance/tests/13-rust-relay-interop.test.ts` (7 scenarios via
+      the real TS client against the Rust binary).
+- [x] **Phase 2 — Rust `protocol`** (`switchboard-protocol`). HKDF-SHA256 (empty
+      salt, info `…:rendezvous:v1`/`…:channel:v1`) + AES-256-GCM (`iv‖tag‖ct`,
+      detached tag, no AAD) **byte-identical to TS** — proven by cross-impl vectors
+      (passed first try). 11 tests. RustCrypto (`hkdf`+`sha2`+`aes-gcm`), no regex dep.
+- [x] **Phase 3 — Rust `client` + `cli`** (`switchboard-client`, `switchboard-cli`).
+      tokio-tungstenite client (join-race fix preserved) + clap `switchboard` binary
+      (start/join/history/report, `/resolve` in-loop, 0600 reports). 10 + 25 tests.
+- [x] **Kept TS:** MCP server + auto-attendant/driver (unchanged, all green).
+- [x] **DECISION resolved:** surgical split (Rust infra + TS agent-glue). Full-Rust
+      (rmcp MCP) deferred unless the split proves insufficient.
+
+### Rust hardening follow-ups (from adversarial review — before any PUBLIC relay)
+The migration is correct + tested; these are the relay's existing DoS/parity gaps
+(most shared with the TS relay) surfaced by the review. The relay is the one
+internet-exposed component → fold into "P2 relay hardening" below before exposure.
+- [ ] **HIGH** relay: cap pending opens per connection — unbounded `pending` map
+      lets one peer OOM the relay within the 10-min TTL (`registry.rs` `open`).
+- [ ] **HIGH** relay: bounded outbound channel — `unbounded_channel` per conn lets
+      a non-reading peer buffer unbounded `deliver`/`hangup` (`main.rs:96`).
+- [ ] **MED** relay+client: WS `max_message_size`/`max_frame_size` cap (~2 MB) via
+      `accept_async_with_config`/`connect_async_with_config` (tungstenite default 64 MiB);
+      also parse/validate BEFORE taking the global lock.
+- [ ] **MED** relay+client: survive `Mutex` poisoning (`lock().unwrap_or_else(into_inner)`
+      or `parking_lot`) + add handshake/idle timeouts + connection cap (slow-loris).
+- [ ] **MED** parity: add `#[serde(deny_unknown_fields)]` to Rust `ClientFrame`
+      (relay) + `Message` (protocol) to match zod `.strict()` (resolves the open
+      §10 decision → **apply**); validate `ts` as ISO-8601 in protocol.
+- [ ] **MED** protocol: make `seal_with_iv` non-public (test-only) — caller-supplied
+      IV under a fixed key is an AES-GCM nonce-reuse footgun.
+- [ ] **LOW** cli: `report <id>` path-traversal — validate `callId` regex before
+      `dir.join`. + SIGINT `.expect` → graceful. + CLI piped-stdin clean exit
+      (`std::process::exit` after finish, or `shutdown_timeout`).
+- [ ] **LOW** cross-impl (shared w/ TS): forgeable untrusted-content fence (use a
+      per-message random nonce delimiter); pairing-code modulo bias (rejection
+      sampling); UTF-16-vs-byte length caps; `maxTurns:0` clamp-vs-reject.
 
 ## P1 — Observability / waiting UX (user-flagged)
 - [x] **Basic waiting feedback** — the CLI now prints "⏳ sent — waiting for the

@@ -1,0 +1,52 @@
+{
+  "$schema": "switchboard crypto cross-impl vectors",
+  "description": "TS-reference crypto vectors. Rust must reproduce rendezvousId, channelKeyHex, and the ENCRYPT sealedB64 (given the fixed iv) bit-for-bit, and must open DECRYPT.realSealedB64 (a genuine TS-sealed frame with a random internal iv).",
+  "algo": {
+    "kdf": "HKDF-SHA256, salt=empty, ikm=utf8(normalized)",
+    "rendezvous": {
+      "info": "switchboard:rendezvous:v1",
+      "lenBytes": 16,
+      "encoding": "lowercase-hex"
+    },
+    "channel": {
+      "info": "switchboard:channel:v1",
+      "lenBytes": 32
+    },
+    "aead": "AES-256-GCM, no AAD, frame = iv(12) ‖ tag(16) ‖ ciphertext, wire = base64(frame)"
+  },
+  "codes": [
+    {
+      "code": "K7F3-9M2P-XQ4R",
+      "normalized": "K7F39M2PXQ4R",
+      "rendezvousId": "3431bd8edc6fff0d348246eec14dc5b1",
+      "channelKeyHex": "db2f91061f26e4b3a6433ed406a53c1380d27160616ec01fba6aa6f84838b63c"
+    },
+    {
+      "code": "ABCD-EFGH-JKMN",
+      "normalized": "ABCDEFGHJKMN",
+      "rendezvousId": "3c2360b5883ee46018908c7d30c22e3f",
+      "channelKeyHex": "a23388e70eeb4e2eccb280ab79ce5783928638455c2eabd270174470cdf14537"
+    },
+    {
+      "code": "2345-6789-PQRS",
+      "normalized": "23456789PQRS",
+      "rendezvousId": "9d76d7a67183c4fa6207405ec5a43c42",
+      "channelKeyHex": "e87efe3fc82169d206afa07b37f27df7185cfae44587f9929ad0079cfbd370d3"
+    }
+  ],
+  "encrypt": {
+    "code": "K7F3-9M2P-XQ4R",
+    "normalized": "K7F39M2PXQ4R",
+    "plaintextUtf8": "hello switchboard — 안녕 🛰",
+    "ivHex": "000102030405060708090a0b",
+    "tagHex": "d3e3d654cd42671ab7be34f9387f49e1",
+    "ciphertextHex": "465616ae50a46ca8afffa1ad8d88d3b1e07de6cf266ca447295d36550f5f5fb355",
+    "sealedB64": "AAECAwQFBgcICQoL0+PWVM1CZxq3vjT5OH9J4UZWFq5QpGyor/+hrY2I07HgfebPJmykRyldNlUPX1+zVQ=="
+  },
+  "decrypt": {
+    "code": "ABCD-EFGH-JKMN",
+    "normalized": "ABCDEFGHJKMN",
+    "plaintextUtf8": "open me from rust",
+    "realSealedB64": "lTWzlYi56gS7357hx1UL1clt//04WVGaB3FhVXKsU7uFcQMEXrwEgCbCH1mV"
+  }
+}
