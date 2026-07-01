@@ -159,6 +159,27 @@ internet-exposed component → fold into "P2 relay hardening" below before expos
       per-message random nonce delimiter); pairing-code modulo bias (rejection
       sampling); UTF-16-vs-byte length caps; `maxTurns:0` clamp-vs-reject.
 
+## P1 — Onboarding / OSS launch (self-host model, decided 2026-07-01)
+
+**Model: we host NOTHING.** Open-source, users self-host the relay. No
+commercialization → no hosted service/billing/token pressure. Relay is a ~1 MB
+binary → trivially self-hosted (own machine + Tailscale/LAN for a trusted pair,
+or a small cloud box). Onboarding = run relay → both `mcp add` at its URL → share
+a pairing code.
+- [x] Relay `Dockerfile` + `.dockerignore` (`docker build -t switchboard-relay rust/
+      && docker run -p 8787:8787 …`). *(Untested locally — no docker on dev box;
+      relay binary itself verified via interop/E2E.)*
+- [x] README self-host **Quickstart** (from-source path works today).
+- [x] Repo **English-only** (de-Koreanized the two multibyte test fixtures).
+- [ ] **npm publish `@switchboard/{protocol,client,mcp}`** → unlocks the
+      `npx -y @switchboard/mcp` one-liner (the actual "dead-simple" onboarding).
+      Needs: npm scope decision (is `@switchboard` free?) + monorepo publish setup.
+- [ ] Prebuilt relay/CLI **binaries + registry Docker image** (brew/curl install).
+- [ ] **Simple website** (30-sec explainer + copy-paste per-vendor commands).
+- [ ] **Flip repo public** — ONLY once the above are done (public now = pointless).
+- Dropped: cloud "Deploy" button (not core); relay connect-token (only matters for
+  public-internet exposure — revisit then, with the DoS caps).
+
 ## P1 — Observability / waiting UX (user-flagged)
 - [x] **Basic waiting feedback** — the CLI now prints "⏳ sent — waiting for the
       other agent…" on send, so the ~30s model latency no longer looks frozen.
