@@ -32,6 +32,49 @@ B's agent:  switchboard join K7F3-9M2P-XQ4R
 
 One handshake, then unlimited automatic round trips — strictly cheaper than relaying by hand.
 
+## Quickstart (self-host)
+
+No accounts, no hosted server — **you run everything**. One person runs a relay both agents can reach (same LAN/Tailscale, or a small cloud box); each person points their agent at it.
+
+**1. Run a relay** (one person, on a reachable host):
+
+```bash
+# Docker (compiles the ~1 MB relay in-container):
+docker build -t switchboard-relay rust/ && docker run -p 8787:8787 switchboard-relay
+
+# …or straight from source (in ./rust):
+cargo run --release -p switchboard-relay
+# → [switchboard-relay] listening on ws://0.0.0.0:8787
+```
+
+It brokers **ciphertext only** — it never sees your code or messages. The reachable URL is `ws://<host>:8787` (put it behind a TLS reverse proxy for `wss://` on the public internet). For a trusted pair, running it on one laptop over Tailscale/LAN is enough.
+
+**2. Add the Switchboard MCP to each agent** (both people), pointing at that relay:
+
+```bash
+# from source (today) — after `npm install && npx tsc -b`:
+claude mcp add switchboard \
+  -e SWITCHBOARD_RELAY_URL=ws://<relay-host>:8787 \
+  -e SWITCHBOARD_EXTENSION=@you/role \
+  -- node "$(pwd)/packages/mcp/dist/bin.js"
+
+# planned one-liner (once published to npm):
+# claude mcp add switchboard -e SWITCHBOARD_RELAY_URL=… -e SWITCHBOARD_EXTENSION=@you/role -- npx -y @switchboard/mcp
+```
+
+Codex / Antigravity: register the same command in their MCP config — the tools are identical.
+
+**3. Just talk to your agent:**
+
+```
+You → agent:            "start a switchboard call about the agbot risk limit"
+agent → you:            code K7F3-9M2P-XQ4R          # share with your partner over chat
+partner → their agent:  "join K7F3-9M2P-XQ4R"
+# the two agents exchange Q&A autonomously until they agree, then summarize to both of you.
+```
+
+Prefer a human at the keyboard instead of an agent? The `switchboard` CLI (Rust, single binary) does `start` / `join` interactively.
+
 ## Security model (summary)
 
 - The **pairing code** is a one-time, short-lived shared secret. It derives an **AES-256-GCM end-to-end channel**; the relay brokers bytes it cannot read. (Upgrade path: SPAKE2 PAKE for shorter codes — see [`docs/PROTOCOL.md`](docs/PROTOCOL.md).)
@@ -56,4 +99,4 @@ See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full handshake and threat mod
 
 ## Status
 
-Early scaffold. MIT licensed.
+Working core, pre-release. MIT licensed. Agent↔agent calls (query → answer → mutual agreement → report) run cross-machine, end-to-end encrypted, over MCP. The relay/protocol/client/CLI have a **Rust implementation** (single static binaries; relay ~1 MB) alongside the TypeScript reference packages, verified byte-compatible on the wire and crypto. Not yet published to npm and not yet a public repo — **self-host from source** per the Quickstart above.
