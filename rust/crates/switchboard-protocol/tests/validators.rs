@@ -51,7 +51,7 @@ fn content_cap() {
     assert!(content_within_cap(&"x".repeat(MAX_CONTENT_BYTES)));
     assert!(!content_within_cap(&"x".repeat(MAX_CONTENT_BYTES + 1)));
     // Multi-byte UTF-8 counts BYTES, not chars (matches Buffer.byteLength).
-    let near = "한".repeat(MAX_CONTENT_BYTES / 3); // 3 bytes each
+    let near = "\u{20AC}".repeat(MAX_CONTENT_BYTES / 3); // U+20AC (euro) is 3 UTF-8 bytes
     assert!(content_within_cap(&near));
 }
 

@@ -37,16 +37,16 @@
   "encrypt": {
     "code": "K7F3-9M2P-XQ4R",
     "normalized": "K7F39M2PXQ4R",
-    "plaintextUtf8": "hello switchboard — 안녕 🛰",
+    "plaintextUtf8": "switchboard multibyte test ☕ 🛰",
     "ivHex": "000102030405060708090a0b",
-    "tagHex": "d3e3d654cd42671ab7be34f9387f49e1",
-    "ciphertextHex": "465616ae50a46ca8afffa1ad8d88d3b1e07de6cf266ca447295d36550f5f5fb355",
-    "sealedB64": "AAECAwQFBgcICQoL0+PWVM1CZxq3vjT5OH9J4UZWFq5QpGyor/+hrY2I07HgfebPJmykRyldNlUPX1+zVQ=="
+    "tagHex": "ff6a8ba6244d91cad3a387b58ffe28fb",
+    "ciphertextHex": "5d4413b65cec7db0a7f9a6e58292deb7ed3f7d3bd76c3cb7d2c29322b73ae0d87a04d4",
+    "sealedB64": "AAECAwQFBgcICQoL/2qLpiRNkcrTo4e1j/4o+11EE7Zc7H2wp/mm5YKS3rftP30712w8t9LCkyK3OuDYegTU"
   },
   "decrypt": {
     "code": "ABCD-EFGH-JKMN",
     "normalized": "ABCDEFGHJKMN",
     "plaintextUtf8": "open me from rust",
-    "realSealedB64": "lTWzlYi56gS7357hx1UL1clt//04WVGaB3FhVXKsU7uFcQMEXrwEgCbCH1mV"
+    "realSealedB64": "XaOYqHpct+uE0SN5SJv05P+0fJ/x/XxAZfjhLvr+GB6WMgJUtNy8zKpk6+6w"
   }
 }
