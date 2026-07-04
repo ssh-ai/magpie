@@ -1,0 +1,64 @@
+# Build + attach prebuilt binaries on every v* tag.
+# Artifacts per platform: magpie (CLI), magpie-relay, magpie-mcp (bun-compiled,
+# no Node needed) → magpie-<os>-<arch>.tar.gz (zip on Windows).
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            target: darwin-arm64
+          - runner: macos-13
+            target: darwin-x64
+          - runner: ubuntu-latest
+            target: linux-x64
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+          - runner: windows-latest
+            target: windows-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Build Rust binaries
+        run: cargo build --release --manifest-path rust/Cargo.toml -p magpie-cli -p magpie-relay
+
+      - name: Build MCP binary (bun compile)
+        run: |
+          bun install --frozen-lockfile || bun install
+          bun build --compile packages/mcp/src/bin.ts --outfile magpie-mcp
+        shell: bash
+
+      - name: Package (unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp rust/target/release/magpie rust/target/release/magpie-relay magpie-mcp dist/
+          tar -czf magpie-${{ matrix.target }}.tar.gz -C dist magpie magpie-relay magpie-mcp
+
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item rust/target/release/magpie.exe, rust/target/release/magpie-relay.exe, magpie-mcp.exe dist/
+          Compress-Archive -Path dist/* -DestinationPath magpie-windows-x64.zip
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            magpie-*.tar.gz
+            magpie-*.zip
