@@ -11,7 +11,9 @@ import { createMagpieMcp } from './server.js';
  *   MAGPIE_EXTENSION=@chris/impl \
  *   magpie-mcp
  *
- * - MAGPIE_RELAY_URL : WebSocket URL of the relay (required).
+ * - MAGPIE_RELAY_URL : WebSocket URL of the default relay. OPTIONAL — a joiner
+ *   pasting a full invite (`CODE@ws://…`) needs no relay config at all;
+ *   sb_start then requires an explicit relayUrl input.
  * - MAGPIE_EXTENSION  : this endpoint's address `@owner/role` (required).
  * - MAGPIE_ASK_TIMEOUT_MS : optional override for how long sb_ask waits.
  *
@@ -22,10 +24,6 @@ async function main(): Promise<void> {
   const relayUrl = process.env.MAGPIE_RELAY_URL;
   const extension = process.env.MAGPIE_EXTENSION;
 
-  if (!relayUrl) {
-    process.stderr.write('[magpie-mcp] MAGPIE_RELAY_URL is required\n');
-    process.exit(1);
-  }
   if (!extension) {
     process.stderr.write('[magpie-mcp] MAGPIE_EXTENSION is required (e.g. @chris/impl)\n');
     process.exit(1);
@@ -42,7 +40,7 @@ async function main(): Promise<void> {
   let mcp;
   try {
     mcp = createMagpieMcp({
-      relayUrl,
+      ...(relayUrl !== undefined && relayUrl !== '' ? { relayUrl } : {}),
       extension, // validated inside createMagpieMcp; throws on bad shape
       ...(askTimeoutMs !== undefined ? { askTimeoutMs } : {}),
     });
@@ -57,7 +55,7 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await mcp.server.connect(transport);
   process.stderr.write(
-    `[magpie-mcp] ready as ${extension} via ${relayUrl} (stdio)\n`,
+    `[magpie-mcp] ready as ${extension} via ${relayUrl || '(no default relay — join with a full invite, or pass relayUrl to sb_start)'} (stdio)\n`,
   );
 
   const shutdown = (sig: string) => {

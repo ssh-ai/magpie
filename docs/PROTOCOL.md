@@ -33,6 +33,10 @@ Properties:
 - The code is **single-use** and expires after `PAIRING_TTL_MS` (10 min). A consumed or expired rendezvous is rejected.
 - No accounts, no key files, no config. The only secret is the code, carried on a channel the humans already trust.
 
+### Invite tokens (zero-config join)
+
+What the human actually shares is ONE self-contained **invite**: `<CODE>@<relay-url>`, e.g. `K7F3-9M2P-XQ4R@ws://192.168.0.13:8787`. The joiner pastes just that — no `MAGPIE_RELAY_URL` needed on their side; the relay URL rides along with the code. A bare code (no `@`) still works and uses the joiner's configured relay. The URL part must be `ws://` or `wss://`; it is routing metadata only and carries no secret (the code is the secret, and the relay never sees it). `formatInvite`/`parseInvite` (TS) and `format_invite`/`parse_invite` (Rust) implement this; the code part is validated by the existing `normalizePairingCode`, splitting at the FIRST `@` so userinfo URLs survive.
+
 ### Crypto: MVP vs upgrade
 
 - **MVP (shipped in scaffold):** `channelKey = HKDF-SHA256(code)`, AEAD = AES-256-GCM. Real, standard crypto. Secure while the code retains entropy and the side channel is trusted. The ~59-bit code is comfortably online-attack-resistant given the relay rate-limits and expires rendezvous attempts.

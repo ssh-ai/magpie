@@ -6,7 +6,7 @@ import {
 } from '@magpie/protocol';
 import type { Message } from '@magpie/protocol';
 import { MagpieClient } from '@magpie/client';
-import { CallSession } from './session.js';
+import { CallSession, SessionStore } from './session.js';
 
 /**
  * Drive a CallSession with a fake client so we test the load-bearing pieces —
@@ -221,6 +221,141 @@ describe('CallSession.markResolved surfaces the peer conclusion to sb_listen', (
     const got = await session.nextInbound(1000);
     expect(got?.type).toBe('resolve');
     expect(got?.content).toBe('agreed: ship it');
+  });
+});
+
+/**
+ * A relay-shaped MagpieClient stub for SessionStore tests: records what it was
+ * asked to join/start and accepts the dispatch wiring. One per relay URL.
+ */
+let fakeCallSeq = 0;
+
+function fakeRelayClient(url: string): {
+  client: MagpieClient;
+  joins: { from: string; code: string }[];
+  hangupCbs: ((reason: string) => void)[];
+} {
+  const joins: { from: string; code: string }[] = [];
+  const hangupCbs: ((reason: string) => void)[] = [];
+  const client = {
+    relayUrlForTest: url,
+    onMessage: vi.fn(),
+    onHangup: vi.fn((cb: (reason: string) => void) => hangupCbs.push(cb)),
+    onPeerJoined: vi.fn(),
+    onResolved: vi.fn(),
+    start: vi.fn(async () => ({ callId: `call-S${++fakeCallSeq}`, code: 'K7F3-9M2P-XQ4R' })),
+    join: vi.fn(async (opts: { from: string; code: string }) => {
+      joins.push(opts);
+      // Globally unique callIds — two relays must never mint the same id.
+      return { callId: `call-J${++fakeCallSeq}`, peer: PEER };
+    }),
+    send: vi.fn(async () => {}),
+    hangup: vi.fn(async () => {}),
+    close: vi.fn(),
+  } as unknown as MagpieClient;
+  return { client, joins, hangupCbs };
+}
+
+/** A SessionStore whose connections are faked, keyed by the URL requested. */
+function fakeStore(defaultRelayUrl: string | null) {
+  const connected = new Map<string, ReturnType<typeof fakeRelayClient>>();
+  const connectUrls: string[] = [];
+  const store = new SessionStore({
+    self: SELF,
+    relayUrl: defaultRelayUrl,
+    connect: async (url: string) => {
+      connectUrls.push(url);
+      let fake = connected.get(url);
+      if (!fake) {
+        fake = fakeRelayClient(url);
+        connected.set(url, fake);
+      }
+      return fake.client;
+    },
+  });
+  return { store, connected, connectUrls };
+}
+
+describe('SessionStore routes joins by invite-carried relay URL', () => {
+  it('join with a full invite connects to THAT relay and passes the normalized code', async () => {
+    const { store, connected, connectUrls } = fakeStore('ws://default:8787');
+
+    const session = await store.join('K7F3-9M2P-XQ4R@ws://other-relay:9000');
+    expect(connectUrls).toEqual(['ws://other-relay:9000']); // NOT the default
+    expect(connected.get('ws://other-relay:9000')!.joins).toEqual([
+      { from: SELF, code: 'K7F39M2PXQ4R' },
+    ]);
+    expect(session.peer).toBe(PEER);
+  });
+
+  it('join with a bare code falls back to the default relay (backward compatible)', async () => {
+    const { store, connectUrls } = fakeStore('ws://default:8787');
+    await store.join('K7F3-9M2P-XQ4R');
+    expect(connectUrls).toEqual(['ws://default:8787']);
+  });
+
+  it('join with a full invite works with NO default relay configured', async () => {
+    const { store, connectUrls } = fakeStore(null);
+    await store.join('K7F3-9M2P-XQ4R@wss://relay.example');
+    expect(connectUrls).toEqual(['wss://relay.example']);
+  });
+
+  it('join with a bare code and NO default relay fails with an actionable error', async () => {
+    const { store } = fakeStore(null);
+    await expect(store.join('K7F3-9M2P-XQ4R')).rejects.toThrow(/set MAGPIE_RELAY_URL/);
+  });
+
+  it('reuses one client per relay URL across calls', async () => {
+    const { store, connectUrls } = fakeStore('ws://default:8787');
+    await store.join('K7F3-9M2P-XQ4R@ws://other:9000');
+    await store.join('K7F3-9M2P-XQ4R@ws://other:9000');
+    await store.join('K7F3-9M2P-XQ4R'); // default relay
+    expect(connectUrls).toEqual(['ws://other:9000', 'ws://default:8787']);
+  });
+
+  it('rejects an invite whose relay URL has a bad scheme', async () => {
+    const { store, connectUrls } = fakeStore('ws://default:8787');
+    await expect(store.join('K7F3-9M2P-XQ4R@http://not-a-relay')).rejects.toThrow(
+      /ws:\/\/ or wss:\/\//,
+    );
+    expect(connectUrls).toEqual([]); // never touched the wire
+  });
+
+  it('a relay-level hangup only closes sessions on THAT relay', async () => {
+    const { store, connected } = fakeStore('ws://default:8787');
+    const a = await store.join('K7F3-9M2P-XQ4R@ws://relay-a:9000');
+    const b = await store.join('K7F3-9M2P-XQ4R@ws://relay-b:9000');
+
+    for (const cb of connected.get('ws://relay-a:9000')!.hangupCbs) cb('relay a down');
+    expect(a.closed).toBe(true);
+    expect(b.closed).toBe(false);
+  });
+});
+
+describe('SessionStore.start and the relay default / override', () => {
+  it('exposes the default relay URL for invite composition', () => {
+    const { store } = fakeStore('ws://default:8787');
+    expect(store.relayUrl).toBe('ws://default:8787');
+  });
+
+  it('start uses the default relay when none is passed', async () => {
+    const { store, connectUrls } = fakeStore('ws://default:8787');
+    const session = await store.start('topic');
+    expect(connectUrls).toEqual(['ws://default:8787']);
+    expect(session.info().code).toBe('K7F3-9M2P-XQ4R');
+  });
+
+  it('start honors an explicit relayUrl override', async () => {
+    const { store, connectUrls } = fakeStore('ws://default:8787');
+    await store.start('topic', undefined, 'wss://override.example');
+    expect(connectUrls).toEqual(['wss://override.example']);
+  });
+
+  it('start with no default and no override fails with an actionable error', async () => {
+    const { store } = fakeStore(null);
+    await expect(store.start('topic')).rejects.toThrow(
+      /set MAGPIE_RELAY_URL or pass relayUrl/,
+    );
   });
 });
 

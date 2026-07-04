@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { renderInbound } from '@magpie/protocol';
+import { formatInvite, renderInbound } from '@magpie/protocol';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { SessionStore } from './session.js';
@@ -58,9 +58,11 @@ export function registerMagpieTools(server: McpServer, store: SessionStore): voi
       title: 'Magpie: start a call',
       description:
         'Start a new Magpie call about `topic` and get a one-time PAIRING ' +
-        'CODE. SHOW THE CODE TO YOUR HUMAN so they can pass it to the other ' +
-        'person out-of-band (Slack, KakaoTalk, voice). The other side runs ' +
-        'sb_join(code) to connect. Returns { callId, code }. Keep the callId for ' +
+        'CODE plus a self-contained INVITE (code@relay-url). SHOW THE INVITE ' +
+        'TO YOUR HUMAN so they can pass it to the other person out-of-band ' +
+        '(Slack, KakaoTalk, voice) — the invite carries the relay too, so the ' +
+        'joiner needs zero configuration. The other side runs sb_join(invite) ' +
+        'to connect. Returns { callId, code, invite }. Keep the callId for ' +
         'subsequent sb_ask / sb_listen / sb_answer / sb_hangup calls. The code is ' +
         'a shared secret that derives the end-to-end encryption key — do not log ' +
         'it anywhere the peer-untrusted side could read it.',
@@ -76,19 +78,34 @@ export function registerMagpieTools(server: McpServer, store: SessionStore): voi
           .positive()
           .optional()
           .describe('Optional cap on the number of turns before auto-hangup.'),
+        relayUrl: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            'Optional ws:// or wss:// relay URL, overriding the configured ' +
+              'MAGPIE_RELAY_URL for this call. Required if no default relay is configured.',
+          ),
       },
     },
-    async ({ topic, maxTurns }) =>
+    async ({ topic, maxTurns, relayUrl }) =>
       guarded(async () => {
-        const session = await store.start(topic, maxTurns);
+        const session = await store.start(topic, maxTurns, relayUrl);
         const { callId, code } = session.info();
+        // start() succeeded, so an effective relay URL necessarily exists.
+        const effectiveRelay = relayUrl ?? store.relayUrl!;
+        const invite = formatInvite(code!, effectiveRelay);
         return ok(
           [
-            `Call started. Share this pairing code with the other person:`,
+            `Call started. Pairing code:`,
             ``,
             `    ${code}`,
             ``,
-            `They run sb_join with that code to connect.`,
+            `Full invite (code + relay in ONE token — THIS single line is what your human should share):`,
+            ``,
+            `    ${invite}`,
+            ``,
+            `The other person pastes the invite into sb_join; they need no relay configuration.`,
             `callId: ${callId}`,
           ].join('\n'),
         );
@@ -101,15 +118,21 @@ export function registerMagpieTools(server: McpServer, store: SessionStore): voi
     {
       title: 'Magpie: join a call',
       description:
-        'Join an existing Magpie call using a PAIRING CODE the other person ' +
-        'gave your human out-of-band. Returns { callId, peer }. Keep the callId ' +
+        'Join an existing Magpie call using the INVITE or PAIRING CODE the ' +
+        'other person gave your human out-of-band. A full invite looks like ' +
+        '"K7F3-9M2P-XQ4R@ws://relay-host:8787" and carries the relay URL — no ' +
+        'MAGPIE_RELAY_URL configuration needed. A bare code (no @) uses the ' +
+        'configured default relay. Returns { callId, peer }. Keep the callId ' +
         'for sb_ask / sb_listen / sb_answer / sb_hangup. ' +
         TRUST_CAVEAT,
       inputSchema: {
         code: z
           .string()
           .min(1)
-          .describe('The pairing code shared by the other party, e.g. "K7F3-9M2P-XQ4R".'),
+          .describe(
+            'The invite or pairing code shared by the other party, e.g. ' +
+              '"K7F3-9M2P-XQ4R@ws://192.168.0.13:8787" or "K7F3-9M2P-XQ4R".',
+          ),
       },
     },
     async ({ code }) =>

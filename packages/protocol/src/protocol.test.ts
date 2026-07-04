@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   generatePairingCode,
   normalizePairingCode,
+  formatInvite,
+  parseInvite,
   rendezvousId,
   channelFromCode,
   EXTENSION_RE,
@@ -43,6 +45,57 @@ describe('pairing code', () => {
   it('rejects malformed codes', () => {
     expect(() => normalizePairingCode('too-short')).toThrow();
     expect(() => normalizePairingCode('IIII-IIII-IIII')).toThrow(); // ambiguous chars not in alphabet
+  });
+});
+
+describe('invite tokens (CODE@relay-url)', () => {
+  it('formatInvite composes display code + relay URL', () => {
+    expect(formatInvite('K7F3-9M2P-XQ4R', 'ws://192.168.0.13:8787')).toBe(
+      'K7F3-9M2P-XQ4R@ws://192.168.0.13:8787',
+    );
+    // tolerant of a lowercase, dashless code — re-rendered in display form
+    expect(formatInvite('k7f39m2pxq4r', 'wss://relay.example')).toBe(
+      'K7F3-9M2P-XQ4R@wss://relay.example',
+    );
+  });
+
+  it('formatInvite rejects non-ws(s) schemes and bad codes', () => {
+    expect(() => formatInvite('K7F3-9M2P-XQ4R', 'http://host:8787')).toThrow(/ws:\/\/ or wss:\/\//);
+    expect(() => formatInvite('K7F3-9M2P-XQ4R', 'not a url')).toThrow(/not a valid URL/);
+    expect(() => formatInvite('too-short', 'ws://host:8787')).toThrow();
+  });
+
+  it('parseInvite splits a full invite into code + relayUrl', () => {
+    const parsed = parseInvite('K7F3-9M2P-XQ4R@ws://192.168.0.13:8787');
+    expect(parsed.code).toBe('K7F39M2PXQ4R');
+    expect(parsed.relayUrl).toBe('ws://192.168.0.13:8787');
+  });
+
+  it('parseInvite keeps bare codes working (relayUrl null)', () => {
+    const parsed = parseInvite('  k7f3 9m2p xq4r ');
+    expect(parsed.code).toBe('K7F39M2PXQ4R');
+    expect(parsed.relayUrl).toBeNull();
+  });
+
+  it('parseInvite splits at the FIRST @ so userinfo URLs survive', () => {
+    const parsed = parseInvite('K7F3-9M2P-XQ4R@wss://user:pw@relay.example:9000');
+    expect(parsed.code).toBe('K7F39M2PXQ4R');
+    expect(parsed.relayUrl).toBe('wss://user:pw@relay.example:9000');
+  });
+
+  it('parseInvite rejects bad schemes and garbage', () => {
+    expect(() => parseInvite('K7F3-9M2P-XQ4R@http://host')).toThrow(/ws:\/\/ or wss:\/\//);
+    expect(() => parseInvite('K7F3-9M2P-XQ4R@')).toThrow(/not a valid URL/);
+    expect(() => parseInvite('@ws://host:8787')).toThrow(); // empty code part
+    expect(() => parseInvite('total garbage')).toThrow();
+  });
+
+  it('round-trips: parseInvite(formatInvite(...)) is lossless', () => {
+    const code = generatePairingCode();
+    const url = 'ws://10.0.0.7:8787';
+    const parsed = parseInvite(formatInvite(code, url));
+    expect(parsed.code).toBe(normalizePairingCode(code));
+    expect(parsed.relayUrl).toBe(url);
   });
 });
 

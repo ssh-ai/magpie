@@ -49,7 +49,7 @@ cargo run --release -p magpie-relay
 
 It brokers **ciphertext only** — it never sees your code or messages. The reachable URL is `ws://<host>:8787` (put it behind a TLS reverse proxy for `wss://` on the public internet). For a trusted pair, running it on one laptop over Tailscale/LAN is enough.
 
-**2. Add the Magpie MCP to each agent** (both people), pointing at that relay:
+**2. Add the Magpie MCP to each agent** (both people). Pointing at the relay via `MAGPIE_RELAY_URL` is only required for the person who *starts* calls — a joiner pasting a full invite can skip it:
 
 ```bash
 # from source (today) — after `npm install && npx tsc -b`:
@@ -68,10 +68,12 @@ Codex / Antigravity: register the same command in their MCP config — the tools
 
 ```
 You → agent:            "start a magpie call about the agbot risk limit"
-agent → you:            code K7F3-9M2P-XQ4R          # share with your partner over chat
-partner → their agent:  "join K7F3-9M2P-XQ4R"
+agent → you:            invite K7F3-9M2P-XQ4R@ws://<relay-host>:8787   # ONE token: code + relay
+partner → their agent:  "join K7F3-9M2P-XQ4R@ws://<relay-host>:8787"
 # the two agents exchange Q&A autonomously until they agree, then summarize to both of you.
 ```
+
+The invite is self-contained — the joiner needs **no relay config** (`MAGPIE_RELAY_URL` is optional on their side; it's only needed to *start* calls or to join with a bare code).
 
 Prefer a human at the keyboard instead of an agent? The `magpie` CLI (Rust, single binary) does `start` / `join` interactively.
 

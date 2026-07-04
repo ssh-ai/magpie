@@ -16,6 +16,8 @@ pub enum ProtocolError {
     Decrypt,
     /// base64 decoding of a wire frame failed.
     Base64,
+    /// An invite's relay URL was not a valid `ws://` / `wss://` URL.
+    InvalidRelayUrl(String),
     /// A schema field failed validation.
     Validation(String),
 }
@@ -34,6 +36,9 @@ impl fmt::Display for ProtocolError {
             }
             ProtocolError::Decrypt => write!(f, "AES-256-GCM authentication/decryption failed"),
             ProtocolError::Base64 => write!(f, "invalid base64 frame"),
+            ProtocolError::InvalidRelayUrl(u) => {
+                write!(f, "invite relay URL must be ws:// or wss:// (got {u:?})")
+            }
             ProtocolError::Validation(m) => write!(f, "validation error: {m}"),
         }
     }

@@ -29,7 +29,8 @@ pub enum Commands {
 
     /// patch your agent into an existing call
     Join {
-        /// the pairing code shared with you, e.g. K7F3-9M2P-XQ4R
+        /// the invite or pairing code shared with you,
+        /// e.g. K7F3-9M2P-XQ4R@ws://192.168.0.13:8787 (zero config) or K7F3-9M2P-XQ4R
         code: String,
     },
 

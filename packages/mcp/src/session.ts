@@ -1,6 +1,7 @@
 import { MagpieClient } from '@magpie/client';
 import {
   newMessageId,
+  parseInvite,
   PROTOCOL_VERSION,
   DEFAULT_MAX_TURNS,
 } from '@magpie/protocol';
@@ -50,6 +51,11 @@ export interface SessionInfo {
 /** How long `sb_ask` waits for the peer's answer before giving up. */
 const DEFAULT_ASK_TIMEOUT_MS = 5 * 60 * 1000;
 
+/** Actionable hint when no relay URL is available for an operation. */
+const NO_RELAY_HINT =
+  'set MAGPIE_RELAY_URL or pass relayUrl (joiners can instead paste a full ' +
+  'invite like CODE@ws://relay-host:8787)';
+
 /**
  * One open call. Wraps the shared client with this call's identity, an inbound
  * query queue, and reply correlation.
@@ -97,6 +103,15 @@ export class CallSession {
 
   get closed(): boolean {
     return this.#closed;
+  }
+
+  /**
+   * The relay client this session lives on. Sessions remember their client
+   * because the store may hold connections to SEVERAL relays (invite-carried
+   * URLs), and dispatch/teardown must target only the right one.
+   */
+  get client(): MagpieClient {
+    return this.#client;
   }
 
   info(): SessionInfo {
@@ -351,45 +366,64 @@ export class CallSession {
 }
 
 /**
- * Owns the single shared MagpieClient connection and the set of live
- * CallSessions. The MCP tools talk only to this store.
+ * Owns the relay connections and the set of live CallSessions. The MCP tools
+ * talk only to this store.
  *
- * The relay correlates by connection, and one MCP process represents one
- * endpoint identity (`self`), so a single client + a callId-keyed session map
- * is the right shape. Inbound deliveries and hangups are fanned out to the
- * matching session by callId.
+ * One MCP process represents one endpoint identity (`self`), but it may talk
+ * to SEVERAL relays: the env-configured default plus any relay carried inside
+ * an invite token (`CODE@ws://…`). Clients are therefore keyed by relay URL
+ * and connected lazily; each CallSession remembers which client it lives on.
+ * Inbound deliveries and hangups are fanned out per client, to the matching
+ * session by callId.
  */
 export class SessionStore {
   readonly self: Extension;
-  readonly #relayUrl: string;
+  readonly #defaultRelayUrl: string | null;
   readonly #askTimeoutMs: number | undefined;
+  readonly #connect: (url: string) => Promise<MagpieClient>;
 
-  #client: MagpieClient | null = null;
-  #connecting: Promise<MagpieClient> | null = null;
+  /** Lazily-connected clients keyed by relay URL (memoized promises). */
+  readonly #clients = new Map<string, Promise<MagpieClient>>();
 
   readonly #sessions = new Map<string, CallSession>();
 
-  constructor(opts: { self: Extension; relayUrl: string; askTimeoutMs?: number }) {
+  constructor(opts: {
+    self: Extension;
+    /** Default relay (env MAGPIE_RELAY_URL). Null = invite-carried URLs only. */
+    relayUrl?: string | null;
+    askTimeoutMs?: number;
+    /** Test seam: how to open a relay connection. Defaults to MagpieClient.connect. */
+    connect?: (url: string) => Promise<MagpieClient>;
+  }) {
     this.self = opts.self;
-    this.#relayUrl = opts.relayUrl;
+    this.#defaultRelayUrl = opts.relayUrl ?? null;
     this.#askTimeoutMs = opts.askTimeoutMs;
+    this.#connect = opts.connect ?? ((url) => MagpieClient.connect(url));
   }
 
-  /** Lazily connect to the relay (once) and wire the global dispatch handlers. */
-  async #ensureClient(): Promise<MagpieClient> {
-    if (this.#client) return this.#client;
-    if (this.#connecting) return this.#connecting;
+  /** The default relay URL from configuration, if any (used to compose invites). */
+  get relayUrl(): string | null {
+    return this.#defaultRelayUrl;
+  }
 
-    this.#connecting = MagpieClient.connect(this.#relayUrl).then((client) => {
+  /** Lazily connect to `url` (once per URL) and wire the dispatch handlers. */
+  #ensureClient(url: string): Promise<MagpieClient> {
+    const existing = this.#clients.get(url);
+    if (existing) return existing;
+
+    const connecting = this.#connect(url).then((client) => {
       client.onMessage((msg) => {
         const session = this.#sessions.get(msg.callId);
         if (session) session.ingest(msg);
       });
       client.onHangup((reason) => {
         // The wire-level hangup frame doesn't carry a callId in onHangup's
-        // signature; close every session defensively. In practice a relay
-        // hangup targets a specific call, but failing safe is correct.
-        for (const s of this.#sessions.values()) s.markClosed(reason);
+        // signature; close every session ON THIS CLIENT defensively. In
+        // practice a relay hangup targets a specific call, but failing safe
+        // is correct — and it must not leak across relays.
+        for (const s of this.#sessions.values()) {
+          if (s.client === client) s.markClosed(reason);
+        }
       });
       client.onPeerJoined((callId, peer) => {
         // The opener learns who joined; record it so sb_ask/sb_answer can
@@ -403,16 +437,28 @@ export class SessionStore {
         const session = this.#sessions.get(callId);
         if (session) session.markResolved(summary);
       });
-      this.#client = client;
-      this.#connecting = null;
       return client;
     });
-    return this.#connecting;
+    // A failed connect must not poison the cache — allow a retry next call.
+    connecting.catch(() => this.#clients.delete(url));
+    this.#clients.set(url, connecting);
+    return connecting;
   }
 
-  /** Start a new call; returns the session whose `.code` is shown to the human. */
-  async start(topic: string, maxTurns?: number): Promise<CallSession> {
-    const client = await this.#ensureClient();
+  /** Resolve which relay a call should use, with a clear config error. */
+  #resolveRelay(override: string | null | undefined, context: string): string {
+    const url = override ?? this.#defaultRelayUrl;
+    if (!url) throw new Error(`no relay configured for ${context}: ${NO_RELAY_HINT}`);
+    return url;
+  }
+
+  /**
+   * Start a new call; returns the session whose `.code` is shown to the human.
+   * `relayUrl` (if given) overrides the configured default for this call.
+   */
+  async start(topic: string, maxTurns?: number, relayUrl?: string): Promise<CallSession> {
+    const url = this.#resolveRelay(relayUrl, 'sb_start');
+    const client = await this.#ensureClient(url);
     const opened = await client.start({
       from: this.self,
       topic,
@@ -431,10 +477,16 @@ export class SessionStore {
     return session;
   }
 
-  /** Join an existing call by its pairing code. */
-  async join(code: string): Promise<CallSession> {
-    const client = await this.#ensureClient();
-    const joined = await client.join({ from: this.self, code });
+  /**
+   * Join an existing call by invite (`CODE@ws://relay`) or bare pairing code.
+   * An invite-carried relay URL wins over the configured default, so a joiner
+   * needs NO relay configuration when handed a full invite.
+   */
+  async join(inviteOrCode: string): Promise<CallSession> {
+    const invite = parseInvite(inviteOrCode);
+    const url = this.#resolveRelay(invite.relayUrl, 'sb_join with a bare code');
+    const client = await this.#ensureClient(url);
+    const joined = await client.join({ from: this.self, code: invite.code });
     const session = new CallSession({
       client,
       callId: joined.callId,
@@ -476,12 +528,14 @@ export class SessionStore {
     return [...this.#sessions.values()].map((s) => s.info());
   }
 
-  /** Close the relay connection and drop all call state. */
+  /** Close every relay connection and drop all call state. */
   close(): void {
     for (const s of this.#sessions.values()) s.markClosed('store closed');
     this.#sessions.clear();
-    this.#client?.close();
-    this.#client = null;
+    for (const pending of this.#clients.values()) {
+      void pending.then((c) => c.close()).catch(() => {});
+    }
+    this.#clients.clear();
   }
 }
 

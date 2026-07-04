@@ -7,7 +7,7 @@
 //! on-disk call store.
 
 use magpie_client::{JoinOpts, StartOpts, MagpieClient};
-use magpie_protocol::normalize_pairing_code;
+use magpie_protocol::{format_invite, parse_invite};
 
 use crate::env::{relay_url, require_extension};
 use crate::reports::{
@@ -18,9 +18,13 @@ use crate::runtime::{message_type_str, stream_until_done, SendOpts, StreamResult
 /// Errors surface as a single friendly `✗ …` line + exit 1 (see `main`).
 type CmdResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
-/// The shareable invite line a human pastes into chat.
-pub fn share_line(code: &str) -> String {
-    format!("Patch your agent in:  magpie join {code}")
+/// The shareable invite line a human pastes into chat. The invite token is
+/// self-contained (`CODE@relay-url`), so the joiner needs no relay config.
+/// Falls back to the bare code if the relay URL is not ws:// / wss:// —
+/// a degraded-but-still-shareable line beats a hard failure here.
+pub fn share_line(code: &str, relay_url: &str) -> String {
+    let token = format_invite(code, relay_url).unwrap_or_else(|_| code.to_string());
+    format!("Patch your agent in:  magpie join {token}")
 }
 
 /// Print the end reason, then build + show + persist the call report. This is
@@ -57,7 +61,7 @@ pub async fn start(topic: &str) -> CmdResult {
     println!("☎️  Magpie line open for: {topic}");
     println!();
     println!("   Your code:  {}", started.code);
-    println!("   {}", share_line(&started.code));
+    println!("   {}", share_line(&started.code, &url));
     println!();
     println!("Waiting on the line… (Ctrl-C to hang up)");
 
@@ -75,13 +79,16 @@ pub async fn start(topic: &str) -> CmdResult {
     Ok(())
 }
 
-/// `join <code>` — patch your agent into an existing call using a code shared
-/// over chat, then hold the line and stream inbound queries.
+/// `join <invite-or-code>` — patch your agent into an existing call using the
+/// token shared over chat, then hold the line and stream inbound queries.
+/// A full invite (`CODE@ws://relay`) carries the relay URL — zero config; a
+/// bare code falls back to `MAGPIE_RELAY_URL` (or the localhost default).
 pub async fn join(raw_code: &str) -> CmdResult {
     let from = require_extension()?;
-    let url = relay_url();
-    // Normalize first for a friendly error on a bad-shaped code.
-    let code = normalize_pairing_code(raw_code)?;
+    // Parse first for a friendly error on a bad-shaped code or relay URL.
+    let invite = parse_invite(raw_code)?;
+    let url = invite.relay_url.unwrap_or_else(relay_url);
+    let code = invite.code;
     let client = MagpieClient::connect(&url).await?;
     let joined = client
         .join(JoinOpts {
@@ -158,9 +165,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn share_line_is_copy_pasteable() {
+    fn share_line_is_a_copy_pasteable_self_contained_invite() {
         assert_eq!(
-            share_line("K7F3-9M2P-XQ4R"),
+            share_line("K7F3-9M2P-XQ4R", "ws://192.168.0.13:8787"),
+            "Patch your agent in:  magpie join K7F3-9M2P-XQ4R@ws://192.168.0.13:8787"
+        );
+    }
+
+    #[test]
+    fn share_line_falls_back_to_bare_code_on_non_ws_relay() {
+        assert_eq!(
+            share_line("K7F3-9M2P-XQ4R", "http://not-a-ws-relay"),
             "Patch your agent in:  magpie join K7F3-9M2P-XQ4R"
         );
     }

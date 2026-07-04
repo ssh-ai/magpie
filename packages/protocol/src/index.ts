@@ -5,6 +5,7 @@
 export * from './constants.js';
 export * from './schema.js';
 export * from './pairing.js';
+export * from './invite.js';
 export * from './security.js';
 
 import { customAlphabet } from 'nanoid';

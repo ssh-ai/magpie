@@ -14,8 +14,13 @@ import { registerMagpieTools } from './tools.js';
  */
 
 export interface MagpieMcpOptions {
-  /** WebSocket URL of the Magpie relay, e.g. ws://localhost:8787. */
-  relayUrl: string;
+  /**
+   * WebSocket URL of the default Magpie relay, e.g. ws://localhost:8787.
+   * OPTIONAL: a joiner pasting a full invite (`CODE@ws://…`) needs none —
+   * the invite carries the relay. sb_start without a default requires an
+   * explicit `relayUrl` input.
+   */
+  relayUrl?: string;
   /** This endpoint's address: `@owner/role`, e.g. `@chris/impl`. Validated. */
   extension: Extension;
   /** Optional override for how long sb_ask waits for a peer reply. */
@@ -38,7 +43,7 @@ export function createMagpieMcp(opts: MagpieMcpOptions): MagpieMcp {
 
   const store = new SessionStore({
     self: extension,
-    relayUrl: opts.relayUrl,
+    relayUrl: opts.relayUrl ?? null,
     ...(opts.askTimeoutMs !== undefined ? { askTimeoutMs: opts.askTimeoutMs } : {}),
   });
 
@@ -47,8 +52,8 @@ export function createMagpieMcp(opts: MagpieMcpOptions): MagpieMcp {
     {
       instructions:
         'Magpie patches your agent through to another person\'s agent. ' +
-        'Use sb_start to begin a call (show the returned pairing code to your ' +
-        'human) or sb_join to connect with a code. Use sb_ask to query the peer; ' +
+        'Use sb_start to begin a call (show the returned invite line to your ' +
+        'human) or sb_join to connect with an invite or code. Use sb_ask to query the peer; ' +
         'use sb_listen to receive the peer\'s questions and sb_answer to reply. ' +
         'AGREE-LOOP: this tool exists for a multi-turn back-and-forth to MUTUAL ' +
         'AGREEMENT, not one-shot Q&A. If you are DRIVING toward a goal, call ' +
