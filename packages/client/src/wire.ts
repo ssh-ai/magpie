@@ -9,7 +9,7 @@
  * structural (plain interfaces) — they are validated defensively on receipt.
  */
 
-import type { Extension } from '@switchboard/protocol';
+import type { Extension } from '@magpie/protocol';
 
 // ---- Client -> Relay -------------------------------------------------------
 

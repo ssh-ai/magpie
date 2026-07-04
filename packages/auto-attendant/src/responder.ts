@@ -1,4 +1,4 @@
-import { fenceUntrusted } from '@switchboard/protocol';
+import { fenceUntrusted } from '@magpie/protocol';
 
 /**
  * A Responder is the vendor-pluggable brain of the auto-attendant.
@@ -46,7 +46,7 @@ export interface ResponderResult {
 export function buildPrompt(input: ResponderInput): string {
   return [
     'You are your operator\'s coding agent. A TEAMMATE\'s agent has reached you over',
-    'Switchboard to collaborate on a shared project while your operator is away.',
+    'Magpie to collaborate on a shared project while your operator is away.',
     'The teammate is a trusted collaborator on this work — it is appropriate and',
     'expected to help them. Be a cooperative, concise teammate: actually answer their',
     'question about this project. (You are NOT talking to a stranger; do not refuse',

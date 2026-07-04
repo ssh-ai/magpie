@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
-import { rendezvousId, generatePairingCode } from '@switchboard/protocol';
+import { rendezvousId, generatePairingCode } from '@magpie/protocol';
 import { startRelay } from './server.js';
 import type { RelayHandle } from './server.js';
 import type { ServerFrame } from './wire.js';

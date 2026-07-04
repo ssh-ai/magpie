@@ -1,4 +1,4 @@
-//! Switchboard protocol constants.
+//! Magpie protocol constants.
 //!
 //! Mirror of `packages/protocol/src/constants.ts`. These are security- and
 //! UX-load-bearing; changing them changes the threat model or the onboarding

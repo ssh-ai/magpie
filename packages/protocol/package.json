@@ -1,7 +1,7 @@
 {
-  "name": "@switchboard/protocol",
+  "name": "@magpie/protocol",
   "version": "0.0.1",
-  "description": "Shared contract for Switchboard: message schema, pairing/handshake, and security primitives.",
+  "description": "Shared contract for Magpie: message schema, pairing/handshake, and security primitives.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",

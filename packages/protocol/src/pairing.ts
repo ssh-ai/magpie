@@ -50,7 +50,7 @@ export function normalizePairingCode(input: string): string {
  */
 export function rendezvousId(code: string): string {
   const norm = normalizePairingCode(code);
-  const out = hkdfSync('sha256', Buffer.from(norm, 'utf8'), Buffer.alloc(0), 'switchboard:rendezvous:v1', 16);
+  const out = hkdfSync('sha256', Buffer.from(norm, 'utf8'), Buffer.alloc(0), 'magpie:rendezvous:v1', 16);
   return Buffer.from(out).toString('hex');
 }
 
@@ -65,7 +65,7 @@ class HkdfGcmChannel implements PairingChannel {
   constructor(code: string) {
     const norm = normalizePairingCode(code);
     this.#key = Buffer.from(
-      hkdfSync('sha256', Buffer.from(norm, 'utf8'), Buffer.alloc(0), 'switchboard:channel:v1', 32),
+      hkdfSync('sha256', Buffer.from(norm, 'utf8'), Buffer.alloc(0), 'magpie:channel:v1', 32),
     );
   }
   seal(plaintext: Uint8Array): Uint8Array {

@@ -7,7 +7,7 @@ import {
   rmSync,
   existsSync,
 } from 'node:fs';
-import type { Extension } from '@switchboard/protocol';
+import type { Extension } from '@magpie/protocol';
 
 /**
  * A tiny on-disk record of the CURRENT call, so the stateless `hangup`
@@ -37,7 +37,7 @@ export interface Session {
   startedAt: string;
 }
 
-const dir = (): string => join(homedir(), '.switchboard');
+const dir = (): string => join(homedir(), '.magpie');
 const file = (): string => join(dir(), 'session.json');
 
 /** Persist the active session, replacing any prior one. */

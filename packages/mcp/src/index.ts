@@ -1,5 +1,5 @@
 /**
- * @switchboard/mcp — an MCP server that exposes Switchboard to ANY MCP-capable
+ * @magpie/mcp — an MCP server that exposes Magpie to ANY MCP-capable
  * agent (Claude Code, Codex, Gemini CLI, …) as six tools:
  *
  *   sb_start  — start a call, get a pairing code to show the human
@@ -13,8 +13,8 @@
  * through renderInbound/fenceUntrusted and is labelled UNTRUSTED DATA. The host
  * answers only from its own project and never runs tools on peer instruction.
  */
-export { createSwitchboardMcp } from './server.js';
-export type { SwitchboardMcp, SwitchboardMcpOptions } from './server.js';
-export { registerSwitchboardTools } from './tools.js';
+export { createMagpieMcp } from './server.js';
+export type { MagpieMcp, MagpieMcpOptions } from './server.js';
+export { registerMagpieTools } from './tools.js';
 export { SessionStore, CallSession } from './session.js';
 export type { SessionInfo } from './session.js';

@@ -1,18 +1,18 @@
 //! The `clap` command surface.
 //!
 //! Mirror of `program.ts` — same command names, arguments, and help text, so
-//! `switchboard --help` reads identically to the TypeScript CLI. `commander`'s
+//! `magpie --help` reads identically to the TypeScript CLI. `commander`'s
 //! `<topic>` (required) / `[callId]` (optional) map to a `String` field and an
 //! `Option<String>` field respectively.
 
 use clap::{Parser, Subcommand};
 
-/// A switchboard for AI agents — patch one agent through to another.
+/// A magpie for AI agents — patch one agent through to another.
 #[derive(Debug, Parser)]
 #[command(
-    name = "switchboard",
+    name = "magpie",
     version,
-    about = "A switchboard for AI agents — patch one agent through to another."
+    about = "A magpie for AI agents — patch one agent through to another."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -53,44 +53,44 @@ mod tests {
 
     #[test]
     fn start_takes_a_required_topic() {
-        let cli = parse(&["switchboard", "start", "is the limit right?"]).unwrap();
+        let cli = parse(&["magpie", "start", "is the limit right?"]).unwrap();
         assert!(matches!(cli.command, Commands::Start { topic } if topic == "is the limit right?"));
     }
 
     #[test]
     fn start_without_topic_is_an_error() {
-        assert!(parse(&["switchboard", "start"]).is_err());
+        assert!(parse(&["magpie", "start"]).is_err());
     }
 
     #[test]
     fn join_takes_a_required_code() {
-        let cli = parse(&["switchboard", "join", "K7F3-9M2P-XQ4R"]).unwrap();
+        let cli = parse(&["magpie", "join", "K7F3-9M2P-XQ4R"]).unwrap();
         assert!(matches!(cli.command, Commands::Join { code } if code == "K7F3-9M2P-XQ4R"));
     }
 
     #[test]
     fn join_without_code_is_an_error() {
-        assert!(parse(&["switchboard", "join"]).is_err());
+        assert!(parse(&["magpie", "join"]).is_err());
     }
 
     #[test]
     fn history_takes_no_args() {
-        let cli = parse(&["switchboard", "history"]).unwrap();
+        let cli = parse(&["magpie", "history"]).unwrap();
         assert!(matches!(cli.command, Commands::History));
     }
 
     #[test]
     fn report_call_id_is_optional() {
-        let with = parse(&["switchboard", "report", "call-abcdefghij"]).unwrap();
+        let with = parse(&["magpie", "report", "call-abcdefghij"]).unwrap();
         assert!(matches!(with.command, Commands::Report { call_id: Some(id) } if id == "call-abcdefghij"));
 
-        let without = parse(&["switchboard", "report"]).unwrap();
+        let without = parse(&["magpie", "report"]).unwrap();
         assert!(matches!(without.command, Commands::Report { call_id: None }));
     }
 
     #[test]
     fn unknown_command_is_an_error() {
-        assert!(parse(&["switchboard", "frobnicate"]).is_err());
+        assert!(parse(&["magpie", "frobnicate"]).is_err());
     }
 
     /// clap's own invariants — guards against an accidentally-broken command tree.

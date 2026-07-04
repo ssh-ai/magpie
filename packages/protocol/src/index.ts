@@ -1,5 +1,5 @@
 /**
- * @switchboard/protocol — the canonical contract every Switchboard package
+ * @magpie/protocol — the canonical contract every Magpie package
  * builds against. Message schema, pairing/handshake, and security primitives.
  */
 export * from './constants.js';

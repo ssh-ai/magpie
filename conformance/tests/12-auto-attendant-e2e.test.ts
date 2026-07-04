@@ -1,11 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { startRelay } from '@switchboard/relay';
-import type { RelayHandle } from '@switchboard/relay';
-import { SwitchboardClient } from '@switchboard/client';
-import { AutoAttendant } from '@switchboard/auto-attendant';
-import type { Responder } from '@switchboard/auto-attendant';
-import { newMessageId, PROTOCOL_VERSION, DEFAULT_MAX_TURNS } from '@switchboard/protocol';
-import type { Extension } from '@switchboard/protocol';
+import { startRelay } from '@magpie/relay';
+import type { RelayHandle } from '@magpie/relay';
+import { MagpieClient } from '@magpie/client';
+import { AutoAttendant } from '@magpie/auto-attendant';
+import type { Responder } from '@magpie/auto-attendant';
+import { newMessageId, PROTOCOL_VERSION, DEFAULT_MAX_TURNS } from '@magpie/protocol';
+import type { Extension } from '@magpie/protocol';
 
 /**
  * Mode ② wiring, deterministically: an AutoAttendant (with a fake, deterministic
@@ -26,8 +26,8 @@ describe('auto-attendant end-to-end (real relay + client, fake brain)', () => {
   it('staffs a call and answers the asker over the wire', async () => {
     relay = await startRelay(0, { host: '127.0.0.1' });
     const url = `ws://127.0.0.1:${relay.port}`;
-    const asker = await SwitchboardClient.connect(url);
-    const staff = await SwitchboardClient.connect(url);
+    const asker = await MagpieClient.connect(url);
+    const staff = await MagpieClient.connect(url);
 
     const started = await asker.start({ from: '@a/pm' as Extension, topic: 'project structure' });
     const joined = await staff.join({ from: '@b/agent' as Extension, code: started.code });

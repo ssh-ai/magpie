@@ -1,8 +1,8 @@
 {
-  "name": "@switchboard/conformance",
+  "name": "@magpie/conformance",
   "version": "0.0.1",
   "private": true,
-  "description": "Switchboard behavioral + security conformance suite. Drives @switchboard/relay and @switchboard/client in-process and ports the six prior-art behavioral scenarios from claude-code-session-bridge.",
+  "description": "Magpie behavioral + security conformance suite. Drives @magpie/relay and @magpie/client in-process and ports the six prior-art behavioral scenarios from claude-code-session-bridge.",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,10 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@switchboard/protocol": "*",
-    "@switchboard/relay": "*",
-    "@switchboard/client": "*",
-    "@switchboard/auto-attendant": "*"
+    "@magpie/protocol": "*",
+    "@magpie/relay": "*",
+    "@magpie/client": "*",
+    "@magpie/auto-attendant": "*"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

@@ -1,8 +1,8 @@
 /**
  * In-process conformance harness.
  *
- * Spins up a real @switchboard/relay (ephemeral port, real WebSockets) and as
- * many @switchboard/client endpoints as a scenario needs. Everything runs in
+ * Spins up a real @magpie/relay (ephemeral port, real WebSockets) and as
+ * many @magpie/client endpoints as a scenario needs. Everything runs in
  * one process so the suite is hermetic and fast, yet exercises the genuine
  * seal/route/open path end-to-end — the relay still only ever sees ciphertext.
  *
@@ -10,19 +10,19 @@
  * next inbound message / hangup, which is what makes porting the prior-art
  * (claude-code-session-bridge) request/response scripts straightforward.
  */
-import { startRelay } from '@switchboard/relay';
-import type { RelayHandle, RelayOptions } from '@switchboard/relay';
-import { SwitchboardClient } from '@switchboard/client';
+import { startRelay } from '@magpie/relay';
+import type { RelayHandle, RelayOptions } from '@magpie/relay';
+import { MagpieClient } from '@magpie/client';
 import {
   newMessageId,
   newCallId,
   PROTOCOL_VERSION,
-} from '@switchboard/protocol';
-import type { Extension, Message, MessageType } from '@switchboard/protocol';
+} from '@magpie/protocol';
+import type { Extension, Message, MessageType } from '@magpie/protocol';
 
 /** A connected endpoint plus inbound queues + waiters for deterministic asserts. */
 export interface Endpoint {
-  readonly client: SwitchboardClient;
+  readonly client: MagpieClient;
   /** Every decrypted inbound Message, in arrival order. */
   readonly inbox: Message[];
   /** Every hangup reason seen, in arrival order. */
@@ -47,13 +47,13 @@ export interface Harness {
 export async function makeHarness(opts: RelayOptions = {}): Promise<Harness> {
   const relay = await startRelay(0, opts);
   const url = `ws://127.0.0.1:${relay.port}`;
-  const endpoints: SwitchboardClient[] = [];
+  const endpoints: MagpieClient[] = [];
 
   return {
     relay,
     url,
     async endpoint(): Promise<Endpoint> {
-      const client = await SwitchboardClient.connect(url);
+      const client = await MagpieClient.connect(url);
       endpoints.push(client);
       return wrapEndpoint(client);
     },
@@ -70,7 +70,7 @@ export async function makeHarness(opts: RelayOptions = {}): Promise<Harness> {
   };
 }
 
-function wrapEndpoint(client: SwitchboardClient): Endpoint {
+function wrapEndpoint(client: MagpieClient): Endpoint {
   const inbox: Message[] = [];
   const hangups: string[] = [];
   const msgWaiters: Array<{ n: number; resolve: (m: Message) => void }> = [];

@@ -3,7 +3,7 @@ import { startRelay } from './server.js';
 
 /**
  * Relay entrypoint. Reads PORT (default 8787) and HOST (default 0.0.0.0) from
- * the environment. Run: `PORT=8787 switchboard-relay`.
+ * the environment. Run: `PORT=8787 magpie-relay`.
  */
 async function main(): Promise<void> {
   const port = Number.parseInt(process.env.PORT ?? '8787', 10);
@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   const host = process.env.HOST ?? '0.0.0.0';
 
   const relay = await startRelay(port, { host });
-  console.log(`[relay] switchboard listening on ws://${host}:${relay.port}`);
+  console.log(`[relay] magpie listening on ws://${host}:${relay.port}`);
 
   const shutdown = (sig: string) => {
     console.log(`[relay] ${sig} received, shutting down`);

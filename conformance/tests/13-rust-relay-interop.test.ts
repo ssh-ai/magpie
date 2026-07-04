@@ -9,9 +9,9 @@ import {
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { SwitchboardClient } from '@switchboard/client';
-import { generatePairingCode } from '@switchboard/protocol';
-import type { Extension, Message } from '@switchboard/protocol';
+import { MagpieClient } from '@magpie/client';
+import { generatePairingCode } from '@magpie/protocol';
+import type { Extension, Message } from '@magpie/protocol';
 import { makeMessage, ALICE, BOB, CAROL } from '../src/harness.js';
 
 /**
@@ -19,23 +19,23 @@ import { makeMessage, ALICE, BOB, CAROL } from '../src/harness.js';
  *
  * The same behavioral corpus the in-process TS relay passes (scenarios 01/03/04/
  * 05/10 + the turn cap) is run here against the REAL Rust relay BINARY, driven
- * through the genuine TS SwitchboardClient + protocol crypto. The relay only
+ * through the genuine TS MagpieClient + protocol crypto. The relay only
  * ever brokers ciphertext; this proves the Rust port is wire-identical and a
  * drop-in for the TS relay.
  *
- * The relay is spawned once on an ephemeral port (SWITCHBOARD_RELAY_PORT=0) and
+ * The relay is spawned once on an ephemeral port (MAGPIE_RELAY_PORT=0) and
  * shared across scenarios; each scenario opens fresh endpoints and tears them
  * down in afterEach, so calls never bleed across tests.
  */
 
 const BIN = fileURLToPath(
-  new URL('../../rust/target/debug/switchboard-relay', import.meta.url),
+  new URL('../../rust/target/debug/magpie-relay', import.meta.url),
 );
 const MANIFEST = fileURLToPath(new URL('../../rust/Cargo.toml', import.meta.url));
 
 /** A connected endpoint + inbound queues/waiters (mirrors src/harness wrapEndpoint). */
 interface Ep {
-  readonly client: SwitchboardClient;
+  readonly client: MagpieClient;
   readonly inbox: Message[];
   readonly hangups: string[];
   waitForMessage(n?: number): Promise<Message>;
@@ -44,9 +44,9 @@ interface Ep {
 
 let relay: ChildProcess | undefined;
 let url = '';
-let live: SwitchboardClient[] = [];
+let live: MagpieClient[] = [];
 
-function wrap(client: SwitchboardClient): Ep {
+function wrap(client: MagpieClient): Ep {
   const inbox: Message[] = [];
   const hangups: string[] = [];
   const msgWaiters: Array<{ n: number; resolve: (m: Message) => void }> = [];
@@ -83,7 +83,7 @@ function wrap(client: SwitchboardClient): Ep {
 }
 
 async function endpoint(): Promise<Ep> {
-  const client = await SwitchboardClient.connect(url);
+  const client = await MagpieClient.connect(url);
   live.push(client);
   return wrap(client);
 }
@@ -96,8 +96,8 @@ beforeAll(async () => {
   relay = spawn(BIN, [], {
     env: {
       ...process.env,
-      SWITCHBOARD_RELAY_PORT: '0',
-      SWITCHBOARD_RELAY_HOST: '127.0.0.1',
+      MAGPIE_RELAY_PORT: '0',
+      MAGPIE_RELAY_HOST: '127.0.0.1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

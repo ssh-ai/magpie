@@ -1,12 +1,12 @@
 [package]
-name = "switchboard-client"
+name = "magpie-client"
 version = "0.0.1"
 edition.workspace = true
 license.workspace = true
-description = "Switchboard client — a thin async WebSocket client to the relay plus the per-call pairing crypto. Mirror of packages/client (TS reference). The relay sees ciphertext only."
+description = "Magpie client — a thin async WebSocket client to the relay plus the per-call pairing crypto. Mirror of packages/client (TS reference). The relay sees ciphertext only."
 
 [dependencies]
-switchboard-protocol = { path = "../switchboard-protocol" }
+magpie-protocol = { path = "../magpie-protocol" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 tokio-tungstenite = "0.21"
 futures-util = "0.3"

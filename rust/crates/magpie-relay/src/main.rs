@@ -1,4 +1,4 @@
-//! The Switchboard relay (Rust). Mirrors `packages/relay/src/server.ts`.
+//! The Magpie relay (Rust). Mirrors `packages/relay/src/server.ts`.
 //!
 //! Speaks the RELAY<->CLIENT control protocol (see `frames`) over WebSocket. Its
 //! entire job is to PAIR two endpoints at a rendezvous and ROUTE opaque sealed
@@ -54,22 +54,22 @@ type Shared = Arc<Mutex<State>>;
 
 #[tokio::main]
 async fn main() {
-    let port: u16 = std::env::var("SWITCHBOARD_RELAY_PORT")
+    let port: u16 = std::env::var("MAGPIE_RELAY_PORT")
         .ok()
         .or_else(|| std::env::args().nth(1))
         .and_then(|s| s.parse().ok())
         .unwrap_or(8787);
-    let host = std::env::var("SWITCHBOARD_RELAY_HOST").unwrap_or_else(|_| "0.0.0.0".into());
+    let host = std::env::var("MAGPIE_RELAY_HOST").unwrap_or_else(|_| "0.0.0.0".into());
 
     let listener = match TcpListener::bind((host.as_str(), port)).await {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("[switchboard-relay] failed to bind {host}:{port}: {e}");
+            eprintln!("[magpie-relay] failed to bind {host}:{port}: {e}");
             std::process::exit(1);
         }
     };
     let bound = listener.local_addr().map(|a| a.to_string()).unwrap_or_default();
-    eprintln!("[switchboard-relay] listening on ws://{bound}");
+    eprintln!("[magpie-relay] listening on ws://{bound}");
 
     let state: Shared = Arc::new(Mutex::new(State::new()));
     tokio::spawn(reaper(state.clone()));
@@ -80,7 +80,7 @@ async fn main() {
                 let state = state.clone();
                 tokio::spawn(handle_conn(tcp, state));
             }
-            Err(e) => eprintln!("[switchboard-relay] accept error: {e}"),
+            Err(e) => eprintln!("[magpie-relay] accept error: {e}"),
         }
     }
 }

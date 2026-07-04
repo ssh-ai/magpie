@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline';
-import { SwitchboardClient } from '@switchboard/client';
-import { fenceUntrusted, newMessageId, PROTOCOL_VERSION } from '@switchboard/protocol';
-import type { Extension, Message, CallOutcome } from '@switchboard/protocol';
+import { MagpieClient } from '@magpie/client';
+import { fenceUntrusted, newMessageId, PROTOCOL_VERSION } from '@magpie/protocol';
+import type { Extension, Message, CallOutcome } from '@magpie/protocol';
 
 /**
  * Human-facing rendering of an inbound peer message, fenced as untrusted data.
@@ -36,7 +36,7 @@ export interface StreamOpts {
  * the call ends. Resolves with the end reason + outcome.
  */
 export function streamUntilDone(
-  client: SwitchboardClient,
+  client: MagpieClient,
   out: (line: string) => void,
   opts: StreamOpts = {},
 ): Promise<StreamResult> {

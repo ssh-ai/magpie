@@ -6,15 +6,15 @@ import {
   newCallId,
   parseMessage,
   PROTOCOL_VERSION,
-} from '@switchboard/protocol';
-import type { Message } from '@switchboard/protocol';
+} from '@magpie/protocol';
+import type { Message } from '@magpie/protocol';
 
 /**
  * The load-bearing invariant of the whole system: a Message sealed by one
  * endpoint's channel (derived from the shared code) is byte-for-byte
  * recoverable by the other endpoint's channel derived from the SAME code, and
  * survives a parseMessage() round-trip. This is exactly the seal/open path
- * SwitchboardClient.send/#onDeliver use, minus the WebSocket.
+ * MagpieClient.send/#onDeliver use, minus the WebSocket.
  */
 
 function makeMessage(overrides: Partial<Message> = {}): Message {

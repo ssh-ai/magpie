@@ -8,10 +8,10 @@ import { mkdirSync, writeFileSync, existsSync, statSync } from 'node:fs';
  * as a heartbeat). The attendant's {@link AutoAttendant.isLive} reads it: fresh
  * file ⇒ a live session is answering; stale/absent ⇒ fall back to files.
  *
- * No daemon, no IPC — just an mtime check under ~/.switchboard/duty/.
+ * No daemon, no IPC — just an mtime check under ~/.magpie/duty/.
  */
 
-const dutyDir = (): string => join(homedir(), '.switchboard', 'duty');
+const dutyDir = (): string => join(homedir(), '.magpie', 'duty');
 
 function dutyFile(handle: string): string {
   // Encode so a handle like "@chris/agbot" is a safe single filename.

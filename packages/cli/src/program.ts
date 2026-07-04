@@ -3,7 +3,7 @@ import { start, call, join, listen, hangup, history, showReport, consoleIo } fro
 import type { Io } from './commands.js';
 
 /**
- * Build the `switchboard` commander program. Factored out (and parameterized by
+ * Build the `magpie` commander program. Factored out (and parameterized by
  * an Io) so it can be exercised in tests without touching the real process.
  *
  * Handler errors are caught and printed friendly — no stack traces on the
@@ -14,8 +14,8 @@ export function buildProgram(io: Io = consoleIo): Command {
   const program = new Command();
 
   program
-    .name('switchboard')
-    .description('A switchboard for AI agents — patch one agent through to another.')
+    .name('magpie')
+    .description('A magpie for AI agents — patch one agent through to another.')
     .version('0.0.1');
 
   /** Run a handler, turning thrown errors into a friendly line + exit code. */

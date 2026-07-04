@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { newCallId, newMessageId, PROTOCOL_VERSION } from '@switchboard/protocol';
-import type { Extension, Message } from '@switchboard/protocol';
+import { newCallId, newMessageId, PROTOCOL_VERSION } from '@magpie/protocol';
+import type { Extension, Message } from '@magpie/protocol';
 import { AutoDriver } from './driver.js';
 import type { DriverBrain, DriverDecision } from './driver.js';
 import type { CallTransport } from './auto-attendant.js';

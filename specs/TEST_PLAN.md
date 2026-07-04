@@ -1,4 +1,4 @@
-# Switchboard — Rust migration test plan
+# Magpie — Rust migration test plan
 
 Status: **DRAFT for review** · 2026-06-29 · owner: Chris
 Companion to `specs/RUST_MIGRATION.md` (read that first — it is the contract).
@@ -26,7 +26,7 @@ LLM-bound), and byte-identical *generation* of secrets/ids (see §6 "Parity scop
 |---|---|---|---|
 | Rust unit | `cargo test` (`#[cfg(test)] mod tests`) | inline per `.rs` | ms |
 | Rust integration | `cargo test --test <name>` | `rust/crates/<crate>/tests/` | ms–s |
-| Rust crypto-vector | `cargo test` reading a committed JSON fixture | `rust/crates/switchboard-protocol/tests/` | ms |
+| Rust crypto-vector | `cargo test` reading a committed JSON fixture | `rust/crates/magpie-protocol/tests/` | ms |
 | TS (reference) | `npx vitest run` | `packages/*`, `conformance/` | s |
 | Cross-language (polyglot) | a runner script that builds the Rust binary, then drives it from TS (and vice-versa) | `scripts/interop/` + a CI job | s |
 
@@ -37,7 +37,7 @@ run` suite (§7) still green. TS is never modified to make Rust pass.
 
 ---
 
-## 1. `switchboard-protocol` (Phase 2) — the load-bearing crate
+## 1. `magpie-protocol` (Phase 2) — the load-bearing crate
 
 Ports `packages/protocol/src/{constants,pairing,schema,security,index}.ts`. This is
 where the byte-identical risk lives, so it gets the deepest coverage.
@@ -184,7 +184,7 @@ asymmetry.
 
 ---
 
-## 2. `switchboard-relay` (Phase 1) — drop-in, crypto-free
+## 2. `magpie-relay` (Phase 1) — drop-in, crypto-free
 
 Ports `packages/relay/src/{wire,store,server}.ts`. Prototype exists
 (`frames.rs`, `registry.rs`, `main.rs`) with 13 passing unit tests; this plan
@@ -268,7 +268,7 @@ serde-strictness decision).
 - `State::{send,connected}`: `send` is a no-op for an unknown endpoint; `connected`
   reflects insert/remove.
 
-### 2b. Integration tests (`rust/crates/switchboard-relay/tests/`)
+### 2b. Integration tests (`rust/crates/magpie-relay/tests/`)
 Drive a **real Rust relay on an ephemeral port** with a minimal in-test
 tungstenite WebSocket client (no protocol crypto needed — frames are opaque
 strings). To make `main.rs` testable, extract the accept-loop/bind into a
@@ -295,7 +295,7 @@ cleanly (mirrors TS `startRelay`). Scenarios:
 ### 2c. Cross-language tests
 - **TS client ↔ Rust relay (primary Phase-1 gate, RUST_MIGRATION §6 gate 2/3):**
   Build the Rust relay binary; point the existing conformance harness at it by
-  adding a `SWITCHBOARD_TEST_RELAY_URL` env override to `makeHarness` (small,
+  adding a `MAGPIE_TEST_RELAY_URL` env override to `makeHarness` (small,
   reviewed refactor — the harness currently always boots the TS relay). Then run
   the relay-observable conformance scenarios against the Rust relay:
   01 query↔response, 02 multi-turn, 03 two-party-only, 04 hangup-notifies-peer,
@@ -303,7 +303,7 @@ cleanly (mirrors TS `startRelay`). Scenarios:
   11 resolve-and-report. (07/08/09 are pure protocol/security and don't exercise
   the relay, but running them under the Rust relay is a free extra signal.)
 - **interop smoke** (`scripts/interop/rust-relay-interop.mjs`, already stubbed in
-  the plan): real TS `SwitchboardClient` does start → join → ask → answer →
+  the plan): real TS `MagpieClient` does start → join → ask → answer →
   hangup through the Rust relay; plus the error path (join unknown rendezvous →
   the client's `#onError` rejects with `UNKNOWN_RENDEZVOUS`).
 - **Rust client ↔ Rust relay** and **Rust client ↔ TS relay** are covered in §3c
@@ -321,7 +321,7 @@ cleanly (mirrors TS `startRelay`). Scenarios:
 
 ---
 
-## 3. `switchboard-client` (Phase 3)
+## 3. `magpie-client` (Phase 3)
 
 Ports `packages/client/src/{client,wire}.ts`: a WebSocket client that owns the
 per-call channel and the FIFO request correlation.
@@ -400,7 +400,7 @@ connect N clients, deterministic `wait_for_message`/`wait_for_hangup`):
 
 ---
 
-## 4. `switchboard-cli` (Phase 3) — the distributable binary
+## 4. `magpie-cli` (Phase 3) — the distributable binary
 
 Ports `packages/cli/src/{env,store,reports,runtime,commands,program}.ts`
 (`commander` → `clap`). The non-developer surface, so output friendliness is part
@@ -411,7 +411,7 @@ of the contract.
 - `relay_url(env)`: blank/unset → `DEFAULT_RELAY_URL` (`ws://localhost:8787`);
   set+trimmed value honored; whitespace-only treated as unset.
 - `require_extension(env)`: returns a valid `@owner/role`; unset → friendly error
-  mentioning `SWITCHBOARD_EXTENSION`; malformed (e.g. `@Chris/impl`) → friendly
+  mentioning `MAGPIE_EXTENSION`; malformed (e.g. `@Chris/impl`) → friendly
   error mentioning the expected form. (Error message *content* matters here — it's
   user-facing copy — so assert the actionable substrings, not exact strings.)
 
@@ -426,7 +426,7 @@ of the contract.
   (not strictly required cross-lang, but keep camelCase parity for safety).
 
 **reports:**
-- `save_report` writes `~/.switchboard/calls/<callId>.json` mode `0600`, returns
+- `save_report` writes `~/.magpie/calls/<callId>.json` mode `0600`, returns
   the path; **round-trips through the protocol `CallReport` serde** (a report
   written by the Rust client/CLI must deserialize as the TS `CallReport` and
   vice-versa — this is the cross-lang requirement, see 4c).
@@ -456,13 +456,13 @@ of the contract.
   - `finish` is idempotent (a second terminal event after done is ignored).
 
 **commands / program (clap):**
-- `share_line(code)` == `"Patch your agent in:  switchboard join {code}"`.
+- `share_line(code)` == `"Patch your agent in:  magpie join {code}"`.
 - `build_program` wiring: subcommands `start <topic>`, `join <code>`,
   `call <topic>`, `listen`, `hangup`, `history`, `report [callId]` are all
   registered with the right arity; a handler error is caught, printed as a
   friendly `✗ …` line, and sets exit code 1 (no stack trace, no panic).
 - `history` with no reports → "No past calls yet."; with reports → one line per
-  call + the `switchboard report <id>` hint.
+  call + the `magpie report <id>` hint.
 - `show_report`: explicit unknown callId → "No report…"; default (no arg) → most
   recent; prints the report + a `──── transcript ────` block; empty transcript →
   "(no messages)".
@@ -475,21 +475,21 @@ The long-lived `start`/`call`/`join`/`listen` command bodies are integration-tes
 (4b) rather than unit-tested, since they hold a socket open; unit tests cover their
 pure helpers (`finish_call` formatting via `render_report`, session writes).
 
-### 4b. Integration tests (`rust/crates/switchboard-cli/tests/`)
+### 4b. Integration tests (`rust/crates/magpie-cli/tests/`)
 Run the built CLI binary as a child process against an in-test relay:
 - `start "<topic>"` prints the code + share line, writes a session file, holds the
   line; a second process `hangup` finds the session, signals the first, and it
   exits printing a saved report; `history` then lists that call; `report` re-reads
-  it. (Use a temp `$HOME` so `~/.switchboard` is sandboxed.)
+  it. (Use a temp `$HOME` so `~/.magpie` is sandboxed.)
 - `join <code>` against a relay with a pending opener patches through, prints
   "Patched through to <peer>", streams an inbound query rendered fenced.
-- friendly-error paths: missing `SWITCHBOARD_EXTENSION` → exit 1 + actionable
+- friendly-error paths: missing `MAGPIE_EXTENSION` → exit 1 + actionable
   message; `join` with a structurally invalid code → exit 1 before touching the
   wire.
 
 ### 4c. Cross-language tests
 - **Rust CLI ⇄ TS peer E2E (RUST_MIGRATION Phase-3 gate):** Rust CLI `start`s a
-  call; a TS `SwitchboardClient` (or the TS CLI) `join`s with the printed code;
+  call; a TS `MagpieClient` (or the TS CLI) `join`s with the printed code;
   they exchange query/response; one side `/resolve`s; assert **both** sides produce
   a `CallReport` with `outcome==resolved`, the same summary, and a transcript of
   the same length. Run over both the TS relay and the Rust relay (4 combinations
@@ -520,7 +520,7 @@ Run the built CLI binary as a child process against an in-test relay:
   the source of truth) + optional `wire-frames.json` (control frame → expected
   routing) for table-driven relay tests on both sides.
 - **Interop runner:** `scripts/interop/` builds the needed Rust binary
-  (`cargo build --release -p switchboard-relay` / `-cli`) and runs the TS driver
+  (`cargo build --release -p magpie-relay` / `-cli`) and runs the TS driver
   against it; and a Rust harness that boots a TS relay/client child. Both must run
   with the sandbox network override the environment requires.
 - **CI jobs (independent toolchains, RUST_MIGRATION §9):**

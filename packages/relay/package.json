@@ -1,7 +1,7 @@
 {
-  "name": "@switchboard/relay",
+  "name": "@magpie/relay",
   "version": "0.0.1",
-  "description": "The Switchboard central relay: a WebSocket server that brokers sealed ciphertext between paired endpoints. Never unseals payloads.",
+  "description": "The Magpie central relay: a WebSocket server that brokers sealed ciphertext between paired endpoints. Never unseals payloads.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,7 +13,7 @@
     }
   },
   "bin": {
-    "switchboard-relay": "./dist/bin.js"
+    "magpie-relay": "./dist/bin.js"
   },
   "scripts": {
     "build": "tsc -b",
@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@switchboard/protocol": "*",
+    "@magpie/protocol": "*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

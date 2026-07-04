@@ -1,15 +1,15 @@
 [workspace]
 resolver = "2"
-members = ["crates/switchboard-relay", "crates/switchboard-protocol", "crates/switchboard-client", "crates/switchboard-cli"]
+members = ["crates/magpie-relay", "crates/magpie-protocol", "crates/magpie-client", "crates/magpie-cli"]
 
-# The Rust half of Switchboard. The language boundary is the wire protocol
+# The Rust half of Magpie. The language boundary is the wire protocol
 # (WebSocket control frames + base64 sealed ciphertext), so these crates
 # interop natively with the TypeScript packages/* — we migrate one at a time.
 #
 # Roadmap (see ../TODO.md "Rust migration"):
-#   crates/switchboard-relay   — Phase 1 (this): drop-in relay, crypto-free.
-#   crates/switchboard-protocol — Phase 2: HKDF + AES-256-GCM + schema.
-#   crates/switchboard-client / -cli — Phase 3: single static binary.
+#   crates/magpie-relay   — Phase 1 (this): drop-in relay, crypto-free.
+#   crates/magpie-protocol — Phase 2: HKDF + AES-256-GCM + schema.
+#   crates/magpie-client / -cli — Phase 3: single static binary.
 
 [workspace.package]
 edition = "2021"

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { fenceUntrusted, renderInbound, parseMessage } from '@switchboard/protocol';
+import { fenceUntrusted, renderInbound, parseMessage } from '@magpie/protocol';
 import { makeHarness, makeMessage, ALICE, BOB } from '../src/harness.js';
 import type { Harness } from '../src/harness.js';
 
@@ -7,7 +7,7 @@ import type { Harness } from '../src/harness.js';
  * SECURITY (c): inbound peer content is DATA, never instructions.
  *
  * The #1 lesson from prior art (claude-code-session-bridge): a received message
- * gets fed to an LLM told to ACT on it -> prompt injection / RCE. Switchboard's
+ * gets fed to an LLM told to ACT on it -> prompt injection / RCE. Magpie's
  * rule is that any model-facing rendering of peer content is FENCED. This corpus
  * pins:
  *   - fenceUntrusted wraps content in explicit begin/end markers + a directive;

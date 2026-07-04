@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ABSOLUTE_MAX_TURNS, DEFAULT_MAX_TURNS } from '@switchboard/protocol';
+import { ABSOLUTE_MAX_TURNS, DEFAULT_MAX_TURNS } from '@magpie/protocol';
 import { CallRegistry, clampMaxTurns, RegistryError } from './store.js';
 
 const RID = 'a'.repeat(32);

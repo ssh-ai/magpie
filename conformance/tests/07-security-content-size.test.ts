@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { MAX_CONTENT_BYTES, parseMessage } from '@switchboard/protocol';
+import { MAX_CONTENT_BYTES, parseMessage } from '@magpie/protocol';
 import { makeHarness, makeMessage, ALICE, BOB } from '../src/harness.js';
 import type { Harness } from '../src/harness.js';
 
@@ -9,7 +9,7 @@ import type { Harness } from '../src/harness.js';
  * Anti-DoS / anti-context-blowup. The cap is enforced in THREE places, all of
  * which this test pins:
  *   1. the zod schema refinement (parseMessage),
- *   2. the client's own outbound guard in SwitchboardClient.send,
+ *   2. the client's own outbound guard in MagpieClient.send,
  *   3. content exactly AT the cap is still accepted (boundary is inclusive).
  */
 describe('conformance/07 security — oversized content is rejected', () => {
@@ -41,7 +41,7 @@ describe('conformance/07 security — oversized content is rejected', () => {
     expect(() => parseMessage(msg)).not.toThrow();
   });
 
-  it('SwitchboardClient.send refuses to seal+ship oversized content', async () => {
+  it('MagpieClient.send refuses to seal+ship oversized content', async () => {
     h = await makeHarness();
     const alice = await h.endpoint();
     const bob = await h.endpoint();

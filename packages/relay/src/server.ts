@@ -3,14 +3,14 @@ import type { AddressInfo } from 'node:net';
 import {
   PAIRING_TTL_MS,
   CALL_IDLE_TTL_MS,
-} from '@switchboard/protocol';
+} from '@magpie/protocol';
 import { CallRegistry, clampMaxTurns, RegistryError } from './store.js';
 import type { LiveCall } from './store.js';
 import { ClientFrame } from './wire.js';
 import type { ServerFrame, ErrorCode } from './wire.js';
 
 /**
- * The switchboard relay.
+ * The magpie relay.
  *
  * It speaks the RELAY<->CLIENT control protocol (see {@link ClientFrame}) over
  * WebSocket. Its entire job is to PAIR two endpoints at a rendezvous and then

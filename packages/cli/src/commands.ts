@@ -1,5 +1,5 @@
-import { SwitchboardClient } from '@switchboard/client';
-import { normalizePairingCode } from '@switchboard/protocol';
+import { MagpieClient } from '@magpie/client';
+import { normalizePairingCode } from '@magpie/protocol';
 import { relayUrl, requireExtension } from './env.js';
 import { writeSession, readSession, clearSession } from './store.js';
 import { streamUntilDone } from './runtime.js';
@@ -9,11 +9,11 @@ import { saveReport, renderReport, listReports, readReport, outcomeLabel } from 
 /**
  * Print the end reason, then build + show + persist the call report. This is
  * the "report on termination" the async value proposition depends on: the
- * conclusion + transcript are saved to ~/.switchboard/calls/ so an away human
- * can read them later with `switchboard report`.
+ * conclusion + transcript are saved to ~/.magpie/calls/ so an away human
+ * can read them later with `magpie report`.
  */
 function finishCall(
-  client: SwitchboardClient,
+  client: MagpieClient,
   callId: string,
   result: StreamResult,
   io: Io,
@@ -24,7 +24,7 @@ function finishCall(
     io.out(renderReport(report));
     try {
       const path = saveReport(report);
-      io.out(`📋 Report saved: ${path}  (re-read with: switchboard report ${report.callId})`);
+      io.out(`📋 Report saved: ${path}  (re-read with: magpie report ${report.callId})`);
     } catch (err) {
       io.err(`(could not save report: ${err instanceof Error ? err.message : String(err)})`);
     }
@@ -60,7 +60,7 @@ export const consoleIo: Io = {
 
 /** The shareable invite line a human pastes into chat. */
 export function shareLine(code: string): string {
-  return `Patch your agent in:  switchboard join ${code}`;
+  return `Patch your agent in:  magpie join ${code}`;
 }
 
 /**
@@ -70,7 +70,7 @@ export function shareLine(code: string): string {
 export async function start(topic: string, io: Io = consoleIo): Promise<void> {
   const from = requireExtension(io.env);
   const url = relayUrl(io.env);
-  const client = await SwitchboardClient.connect(url);
+  const client = await MagpieClient.connect(url);
   const { code, callId } = await client.start({ from, topic });
 
   writeSession({
@@ -84,7 +84,7 @@ export async function start(topic: string, io: Io = consoleIo): Promise<void> {
     startedAt: new Date().toISOString(),
   });
 
-  io.out(`☎️  Switchboard line open for: ${topic}`);
+  io.out(`☎️  Magpie line open for: ${topic}`);
   io.out('');
   io.out(`   Your code:  ${code}`);
   io.out(`   ${shareLine(code)}`);
@@ -106,7 +106,7 @@ export async function start(topic: string, io: Io = consoleIo): Promise<void> {
 export async function call(topic: string, io: Io = consoleIo): Promise<void> {
   const from = requireExtension(io.env);
   const url = relayUrl(io.env);
-  const client = await SwitchboardClient.connect(url);
+  const client = await MagpieClient.connect(url);
   const { code, callId } = await client.start({ from, topic });
 
   writeSession({
@@ -153,7 +153,7 @@ export async function join(rawCode: string, io: Io = consoleIo): Promise<void> {
   const from = requireExtension(io.env);
   const url = relayUrl(io.env);
   const code = normalizePairingCode(rawCode); // throws a friendly error on bad shape
-  const client = await SwitchboardClient.connect(url);
+  const client = await MagpieClient.connect(url);
   const { callId, peer } = await client.join({ from, code });
 
   writeSession({
@@ -189,12 +189,12 @@ export async function listen(io: Io = consoleIo): Promise<void> {
   const session = readSession();
   if (!session) {
     throw new Error(
-      'No active call to listen to. Start one with `switchboard start "<topic>"`\n' +
-        'or join one with `switchboard join <code>`.',
+      'No active call to listen to. Start one with `magpie start "<topic>"`\n' +
+        'or join one with `magpie join <code>`.',
     );
   }
   const url = relayUrl(io.env);
-  const client = await SwitchboardClient.connect(url);
+  const client = await MagpieClient.connect(url);
   const { callId } = await client.join({ from, code: session.code });
 
   io.out(`👂 Listening on the line for: ${session.topic}`);
@@ -219,7 +219,7 @@ export async function hangup(io: Io = consoleIo): Promise<void> {
 
   // Best effort: ask the relay to close the call so the peer is notified.
   try {
-    const client = await SwitchboardClient.connect(session.relayUrl);
+    const client = await MagpieClient.connect(session.relayUrl);
     await client.hangup(session.callId);
     client.close();
   } catch {
@@ -240,7 +240,7 @@ export async function hangup(io: Io = consoleIo): Promise<void> {
 }
 
 /**
- * `history` — list past calls and their outcomes (from ~/.switchboard/calls/).
+ * `history` — list past calls and their outcomes (from ~/.magpie/calls/).
  * This is how an away human catches up on what their agent concluded.
  */
 export async function history(io: Io = consoleIo): Promise<void> {
@@ -252,7 +252,7 @@ export async function history(io: Io = consoleIo): Promise<void> {
   io.out(`Past calls (${reports.length}):`);
   for (const r of reports) {
     io.out(`  ${r.endedAt}  ${outcomeLabel(r.outcome)}  with ${r.peer ?? '?'}  "${r.topic}"`);
-    io.out(`      switchboard report ${r.callId}`);
+    io.out(`      magpie report ${r.callId}`);
   }
 }
 

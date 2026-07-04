@@ -1,7 +1,7 @@
-//! `switchboard` — the non-developer-simple CLI.
+//! `magpie` — the non-developer-simple CLI.
 //!
-//! Mirror of `packages/cli` (the TypeScript reference). A friendly `switchboard`
-//! command that wraps `switchboard-client` + `switchboard-protocol` behind
+//! Mirror of `packages/cli` (the TypeScript reference). A friendly `magpie`
+//! command that wraps `magpie-client` + `magpie-protocol` behind
 //! `start｜join｜history｜report`. Output reads like a phone call, not a stack
 //! trace; thrown errors are caught and printed as a single `✗ …` line with a
 //! non-zero exit code (mirrors `program.ts`'s `run` wrapper).

@@ -1,13 +1,13 @@
-import { SwitchboardClient } from '@switchboard/client';
+import { MagpieClient } from '@magpie/client';
 import {
   newMessageId,
   PROTOCOL_VERSION,
   DEFAULT_MAX_TURNS,
-} from '@switchboard/protocol';
-import type { CallReport, Extension, Message, MessageType } from '@switchboard/protocol';
+} from '@magpie/protocol';
+import type { CallReport, Extension, Message, MessageType } from '@magpie/protocol';
 
 /**
- * Session layer that sits between the MCP tools and the raw SwitchboardClient.
+ * Session layer that sits between the MCP tools and the raw MagpieClient.
  *
  * The MCP tools are stateless request/response shaped (a host model calls
  * `sb_ask` and expects the peer's answer back in the SAME tool result), but the
@@ -74,11 +74,11 @@ export class CallSession {
   /** Outstanding `sb_ask` calls keyed by the query message id we are awaiting a reply to. */
   readonly #awaiting = new Map<string, AwaitedReply>();
 
-  readonly #client: SwitchboardClient;
+  readonly #client: MagpieClient;
   readonly #askTimeoutMs: number;
 
   constructor(opts: {
-    client: SwitchboardClient;
+    client: MagpieClient;
     callId: string;
     self: Extension;
     peer: Extension | null;
@@ -351,7 +351,7 @@ export class CallSession {
 }
 
 /**
- * Owns the single shared SwitchboardClient connection and the set of live
+ * Owns the single shared MagpieClient connection and the set of live
  * CallSessions. The MCP tools talk only to this store.
  *
  * The relay correlates by connection, and one MCP process represents one
@@ -364,8 +364,8 @@ export class SessionStore {
   readonly #relayUrl: string;
   readonly #askTimeoutMs: number | undefined;
 
-  #client: SwitchboardClient | null = null;
-  #connecting: Promise<SwitchboardClient> | null = null;
+  #client: MagpieClient | null = null;
+  #connecting: Promise<MagpieClient> | null = null;
 
   readonly #sessions = new Map<string, CallSession>();
 
@@ -376,11 +376,11 @@ export class SessionStore {
   }
 
   /** Lazily connect to the relay (once) and wire the global dispatch handlers. */
-  async #ensureClient(): Promise<SwitchboardClient> {
+  async #ensureClient(): Promise<MagpieClient> {
     if (this.#client) return this.#client;
     if (this.#connecting) return this.#connecting;
 
-    this.#connecting = SwitchboardClient.connect(this.#relayUrl).then((client) => {
+    this.#connecting = MagpieClient.connect(this.#relayUrl).then((client) => {
       client.onMessage((msg) => {
         const session = this.#sessions.get(msg.callId);
         if (session) session.ingest(msg);

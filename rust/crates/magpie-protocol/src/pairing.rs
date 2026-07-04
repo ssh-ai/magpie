@@ -20,8 +20,8 @@ use sha2::Sha256;
 use crate::constants::{CODE_ALPHABET, CODE_GROUP_LEN, CODE_TOTAL_LEN};
 use crate::error::{ProtocolError, Result};
 
-const RENDEZVOUS_INFO: &[u8] = b"switchboard:rendezvous:v1";
-const CHANNEL_INFO: &[u8] = b"switchboard:channel:v1";
+const RENDEZVOUS_INFO: &[u8] = b"magpie:rendezvous:v1";
+const CHANNEL_INFO: &[u8] = b"magpie:channel:v1";
 
 /// IV length for AES-256-GCM (96-bit nonce, the GCM standard).
 const IV_LEN: usize = 12;
@@ -62,7 +62,7 @@ fn hkdf_expand(ikm: &[u8], info: &[u8], out: &mut [u8]) {
 }
 
 /// Rendezvous id the relay uses to pair two endpoints WITHOUT learning the code.
-/// `HKDF-SHA256(ikm=utf8(norm), salt="", info="switchboard:rendezvous:v1", L=16)`
+/// `HKDF-SHA256(ikm=utf8(norm), salt="", info="magpie:rendezvous:v1", L=16)`
 /// rendered as lowercase hex (32 chars). Mirrors `rendezvousId`.
 pub fn rendezvous_id(code: &str) -> Result<String> {
     let norm = normalize_pairing_code(code)?;
@@ -72,7 +72,7 @@ pub fn rendezvous_id(code: &str) -> Result<String> {
 }
 
 /// Derive the raw 32-byte AES-256 channel key from a code.
-/// `HKDF-SHA256(ikm=utf8(norm), salt="", info="switchboard:channel:v1", L=32)`.
+/// `HKDF-SHA256(ikm=utf8(norm), salt="", info="magpie:channel:v1", L=32)`.
 pub fn channel_key(code: &str) -> Result<[u8; 32]> {
     let norm = normalize_pairing_code(code)?;
     let mut key = [0u8; 32];

@@ -1,6 +1,6 @@
-//! `switchboard-protocol` — the canonical wire contract, in Rust.
+//! `magpie-protocol` — the canonical wire contract, in Rust.
 //!
-//! Mirror of the TypeScript `@switchboard/protocol` (`packages/protocol`):
+//! Mirror of the TypeScript `@magpie/protocol` (`packages/protocol`):
 //! HKDF-SHA256 rendezvous/channel derivation, AES-256-GCM seal/open, and the
 //! message schema + validators. The crypto is byte-identical to the TS
 //! reference (enforced by the shared cross-impl vectors in `tests/`), so a Rust

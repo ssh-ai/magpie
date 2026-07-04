@@ -1,13 +1,13 @@
 {
-  "name": "@switchboard/auto-attendant",
+  "name": "@magpie/auto-attendant",
   "version": "0.0.1",
-  "description": "Headless 'answer on your behalf' worker for Switchboard: listens for inbound queries on a call and answers from your own files via a vendor-pluggable Responder (Claude/Codex/Gemini). Never guesses — escalates to the human when unsure or gated.",
+  "description": "Headless 'answer on your behalf' worker for Magpie: listens for inbound queries on a call and answers from your own files via a vendor-pluggable Responder (Claude/Codex/Gemini). Never guesses — escalates to the human when unsure or gated.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "switchboard-attend": "./dist/bin.js"
+    "magpie-attend": "./dist/bin.js"
   },
   "exports": {
     ".": {
@@ -20,7 +20,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@switchboard/protocol": "*",
-    "@switchboard/client": "*"
+    "@magpie/protocol": "*",
+    "@magpie/client": "*"
   }
 }

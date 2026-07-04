@@ -1,7 +1,7 @@
 //! Validator unit tests + a seal→open round-trip + id/code generation shape.
 
-use switchboard_protocol::pairing::{frame_from_b64, frame_to_b64};
-use switchboard_protocol::{
+use magpie_protocol::pairing::{frame_from_b64, frame_to_b64};
+use magpie_protocol::{
     channel_from_code, content_within_cap, generate_pairing_code, is_valid_call_id,
     is_valid_extension, is_valid_message_id, new_call_id, new_message_id, normalize_pairing_code,
     parse_message, rendezvous_id, MAX_CONTENT_BYTES,

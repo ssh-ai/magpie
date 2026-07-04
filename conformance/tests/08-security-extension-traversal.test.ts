@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EXTENSION_RE, Extension, assertSafeExtension } from '@switchboard/protocol';
+import { EXTENSION_RE, Extension, assertSafeExtension } from '@magpie/protocol';
 
 /**
  * SECURITY (b): an extension containing "../" (or any path-traversal / id-spoof

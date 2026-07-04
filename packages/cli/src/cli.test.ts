@@ -3,8 +3,8 @@ import {
   newMessageId,
   newCallId,
   PROTOCOL_VERSION,
-} from '@switchboard/protocol';
-import type { Message } from '@switchboard/protocol';
+} from '@magpie/protocol';
+import type { Message } from '@magpie/protocol';
 import { relayUrl, requireExtension, DEFAULT_RELAY_URL } from './env.js';
 import { shareLine } from './commands.js';
 import { renderInboundForHuman } from './runtime.js';
@@ -12,11 +12,11 @@ import { renderInboundForHuman } from './runtime.js';
 describe('env: relayUrl', () => {
   it('defaults to localhost when unset or blank', () => {
     expect(relayUrl({})).toBe(DEFAULT_RELAY_URL);
-    expect(relayUrl({ SWITCHBOARD_RELAY_URL: '   ' })).toBe(DEFAULT_RELAY_URL);
+    expect(relayUrl({ MAGPIE_RELAY_URL: '   ' })).toBe(DEFAULT_RELAY_URL);
   });
 
   it('honors an explicit relay url (trimmed)', () => {
-    expect(relayUrl({ SWITCHBOARD_RELAY_URL: ' wss://relay.example:9000 ' })).toBe(
+    expect(relayUrl({ MAGPIE_RELAY_URL: ' wss://relay.example:9000 ' })).toBe(
       'wss://relay.example:9000',
     );
   });
@@ -24,16 +24,16 @@ describe('env: relayUrl', () => {
 
 describe('env: requireExtension', () => {
   it('returns a valid extension', () => {
-    expect(requireExtension({ SWITCHBOARD_EXTENSION: '@chris/impl' })).toBe('@chris/impl');
+    expect(requireExtension({ MAGPIE_EXTENSION: '@chris/impl' })).toBe('@chris/impl');
   });
 
   it('throws a friendly error when missing', () => {
-    expect(() => requireExtension({})).toThrow(/SWITCHBOARD_EXTENSION is not set/);
+    expect(() => requireExtension({})).toThrow(/MAGPIE_EXTENSION is not set/);
   });
 
   it('rejects a malformed extension', () => {
-    expect(() => requireExtension({ SWITCHBOARD_EXTENSION: 'chris' })).toThrow(/not a valid extension/);
-    expect(() => requireExtension({ SWITCHBOARD_EXTENSION: '@Chris/Impl' })).toThrow(
+    expect(() => requireExtension({ MAGPIE_EXTENSION: 'chris' })).toThrow(/not a valid extension/);
+    expect(() => requireExtension({ MAGPIE_EXTENSION: '@Chris/Impl' })).toThrow(
       /not a valid extension/,
     );
   });
@@ -41,7 +41,7 @@ describe('env: requireExtension', () => {
 
 describe('shareLine', () => {
   it('produces a copy-pasteable join invite', () => {
-    expect(shareLine('K7F3-9M2P-XQ4R')).toBe('Patch your agent in:  switchboard join K7F3-9M2P-XQ4R');
+    expect(shareLine('K7F3-9M2P-XQ4R')).toBe('Patch your agent in:  magpie join K7F3-9M2P-XQ4R');
   });
 });
 

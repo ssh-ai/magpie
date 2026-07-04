@@ -1,6 +1,6 @@
 # Provider-compliance constraints (Anthropic / OpenAI)
 
-Switchboard moves messages between independently-operated agents. To stay on the
+Magpie moves messages between independently-operated agents. To stay on the
 right side of provider terms, the system is built around one principle and one
 hard exclusion. These are load-bearing — do not "improve" them away.
 
@@ -8,7 +8,7 @@ hard exclusion. These are load-bearing — do not "improve" them away.
 
 > Every agent runs on its owner's own account/credentials, for that owner's own
 > purpose. My Claude = my login/my key. Your Claude = your account. Codex = your
-> OpenAI account. **Switchboard never touches, stores, extracts, forwards, or
+> OpenAI account. **Magpie never touches, stores, extracts, forwards, or
 > shares any provider token.** It only relays end-to-end-encrypted message bytes.
 
 Because each side authenticates itself, all of these are allowed and work
@@ -38,13 +38,13 @@ effectively credential/seat sharing, which both providers prohibit:
   login credentials between users, and may not resell or lease access to their
   account or any end-user account.
 
-So Switchboard supports **mode ② only** (agent ↔ agent, each on its own auth),
+So Magpie supports **mode ② only** (agent ↔ agent, each on its own auth),
 plus **mode ①** (a human talking to their *own* agent). It does **not** offer a
 "talk directly to the other person's agent" feature.
 
 ## SaaS / hosted implications
 
-A hosted Switchboard must use **API-key authentication** (Anthropic Commercial
+A hosted Magpie must use **API-key authentication** (Anthropic Commercial
 Terms / OpenAI API), not users' consumer-subscription OAuth:
 
 - **Bring-your-own-key:** each user supplies their own API key, or runs their own

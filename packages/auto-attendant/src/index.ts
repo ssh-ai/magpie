@@ -1,7 +1,7 @@
 /**
- * @switchboard/auto-attendant — the headless "answer on your behalf" worker.
+ * @magpie/auto-attendant — the headless "answer on your behalf" worker.
  *
- * It staffs a single Switchboard call while its operator is away: inbound peer
+ * It staffs a single Magpie call while its operator is away: inbound peer
  * queries are answered ONLY from the operator's own files, via a vendor-
  * pluggable {@link Responder} (Claude / Codex / Gemini). It runs under
  * DEFAULT_ACTION_POLICY (read own files, never run tools) and NEVER guesses —

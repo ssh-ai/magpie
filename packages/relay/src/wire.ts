@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { Extension, CallId } from '@switchboard/protocol';
+import { Extension, CallId } from '@magpie/protocol';
 
 /**
  * RELAY <-> CLIENT control frames.
  *
  * These are the *transport-control* envelopes spoken over the WebSocket — they
- * are NOT the end-to-end {@link import('@switchboard/protocol').Message}. The
+ * are NOT the end-to-end {@link import('@magpie/protocol').Message}. The
  * relay validates and routes these envelopes but treats every `frame` field as
  * opaque sealed ciphertext (base64). It NEVER unseals, parses, or interprets a
  * payload, and it never touches the filesystem.

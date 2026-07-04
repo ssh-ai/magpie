@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { parseMessage } from '@switchboard/protocol';
+import { parseMessage } from '@magpie/protocol';
 import { makeHarness, makeMessage, ALICE, BOB } from '../src/harness.js';
 import type { Harness } from '../src/harness.js';
 

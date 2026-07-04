@@ -1,15 +1,15 @@
 {
-  "$schema": "switchboard crypto cross-impl vectors",
+  "$schema": "magpie crypto cross-impl vectors",
   "description": "TS-reference crypto vectors. Rust must reproduce rendezvousId, channelKeyHex, and the ENCRYPT sealedB64 (given the fixed iv) bit-for-bit, and must open DECRYPT.realSealedB64 (a genuine TS-sealed frame with a random internal iv).",
   "algo": {
     "kdf": "HKDF-SHA256, salt=empty, ikm=utf8(normalized)",
     "rendezvous": {
-      "info": "switchboard:rendezvous:v1",
+      "info": "magpie:rendezvous:v1",
       "lenBytes": 16,
       "encoding": "lowercase-hex"
     },
     "channel": {
-      "info": "switchboard:channel:v1",
+      "info": "magpie:channel:v1",
       "lenBytes": 32
     },
     "aead": "AES-256-GCM, no AAD, frame = iv(12) ‖ tag(16) ‖ ciphertext, wire = base64(frame)"
@@ -18,35 +18,35 @@
     {
       "code": "K7F3-9M2P-XQ4R",
       "normalized": "K7F39M2PXQ4R",
-      "rendezvousId": "3431bd8edc6fff0d348246eec14dc5b1",
-      "channelKeyHex": "db2f91061f26e4b3a6433ed406a53c1380d27160616ec01fba6aa6f84838b63c"
+      "rendezvousId": "c8275442fcc0c7d2434fdbe0a81a1b5a",
+      "channelKeyHex": "04e7ddb2f391ae5a9b2c33ec2b6181924b5b342227e61ab79bed5e3625842a06"
     },
     {
       "code": "ABCD-EFGH-JKMN",
       "normalized": "ABCDEFGHJKMN",
-      "rendezvousId": "3c2360b5883ee46018908c7d30c22e3f",
-      "channelKeyHex": "a23388e70eeb4e2eccb280ab79ce5783928638455c2eabd270174470cdf14537"
+      "rendezvousId": "a3d666dd34969264dfb36aa72452ebec",
+      "channelKeyHex": "99f80d508253708890f551840b8a313205e755e19b30bcf3435aae0e77c5a1af"
     },
     {
       "code": "2345-6789-PQRS",
       "normalized": "23456789PQRS",
-      "rendezvousId": "9d76d7a67183c4fa6207405ec5a43c42",
-      "channelKeyHex": "e87efe3fc82169d206afa07b37f27df7185cfae44587f9929ad0079cfbd370d3"
+      "rendezvousId": "ff6129de6f9904577217aca8a25a41c3",
+      "channelKeyHex": "d7466c2ba8fbdac7b29d68ad3a92eef981a4b4641f00bf695488c5d283264984"
     }
   ],
   "encrypt": {
     "code": "K7F3-9M2P-XQ4R",
     "normalized": "K7F39M2PXQ4R",
-    "plaintextUtf8": "switchboard multibyte test ☕ 🛰",
+    "plaintextUtf8": "magpie multibyte test ☕ 🛰",
     "ivHex": "000102030405060708090a0b",
-    "tagHex": "ff6a8ba6244d91cad3a387b58ffe28fb",
-    "ciphertextHex": "5d4413b65cec7db0a7f9a6e58292deb7ed3f7d3bd76c3cb7d2c29322b73ae0d87a04d4",
-    "sealedB64": "AAECAwQFBgcICQoL/2qLpiRNkcrTo4e1j/4o+11EE7Zc7H2wp/mm5YKS3rftP30712w8t9LCkyK3OuDYegTU"
+    "tagHex": "f09ad429a83aa94aa5562f414117a6d8",
+    "ciphertextHex": "35f4528e0a7cad6b76e039072d2f7d21fa9e74e710669e88ce16b5964768",
+    "sealedB64": "AAECAwQFBgcICQoL8JrUKag6qUqlVi9BQRem2DX0Uo4KfK1rduA5By0vfSH6nnTnEGaeiM4WtZZHaA=="
   },
   "decrypt": {
     "code": "ABCD-EFGH-JKMN",
     "normalized": "ABCDEFGHJKMN",
     "plaintextUtf8": "open me from rust",
-    "realSealedB64": "XaOYqHpct+uE0SN5SJv05P+0fJ/x/XxAZfjhLvr+GB6WMgJUtNy8zKpk6+6w"
+    "realSealedB64": "hE9g4j5JWUo15pJBrpdR7YB3ORsarmDL8pWZ9+Oydrv4NoYXn+wvk9cdZMAf"
   }
 }

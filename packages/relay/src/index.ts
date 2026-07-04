@@ -1,5 +1,5 @@
 /**
- * @switchboard/relay — the central switchboard.
+ * @magpie/relay — the central magpie.
  *
  * A WebSocket server that pairs two endpoints at a rendezvous and routes opaque
  * sealed frames between them. It brokers CIPHERTEXT ONLY: it never unseals a

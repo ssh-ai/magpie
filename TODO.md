@@ -1,4 +1,4 @@
-# Switchboard — TODO / Roadmap
+# Magpie — TODO / Roadmap
 
 Status snapshot (2026-06-25): core transport works and is validated live
 cross-machine (iMac ↔ MacBook over LAN/Tailscale). 86 tests green. What remains
@@ -30,10 +30,10 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
 - Interactive CLI send; turn-cap notifies both sides; join-race channel fix.
 - Provider-ToS compliance (`docs/COMPLIANCE.md`): auth separation, mode ③ excluded.
 - **Resolution + report-on-termination**: `/resolve`, CALL REPORT, persisted to
-  `~/.switchboard/calls/`, `history`/`report` recall. Verified live cross-machine.
+  `~/.magpie/calls/`, `history`/`report` recall. Verified live cross-machine.
 - Proved a real `claude -p` agent can answer headlessly from its own files.
 - **MCP in-session verified (2026-06-28)**: a real Claude Code session loaded
-  `@switchboard/mcp` via `--mcp-config` and patched through both directions over
+  `@magpie/mcp` via `--mcp-config` and patched through both directions over
   the relay — asker (`sb_join`/`sb_ask`) and answerer (`sb_listen`/read-own-repo/
   `sb_answer`), no human typing, peer text fenced. Same binary registers in
   Codex CLI / Antigravity. This is the cross-vendor substrate (slash/skill = sugar).
@@ -51,13 +51,13 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       loops); responder must enumerate files before claiming absence (false-negative).
   - [ ] v1.1: mutual confirm (B also agrees before close) + no-progress escalate. **[PARKED]**
   - [ ] Cross-vendor live test: Claude ↔ Codex CLI over the same MCP (register
-        `switchboard-mcp` in `~/.codex/config.toml`; proves vendor-neutral claim). **[PARKED]**
+        `magpie-mcp` in `~/.codex/config.toml`; proves vendor-neutral claim). **[PARKED]**
   - [ ] `/sb` slash-command / Skill wrapper for Claude Code (thin UX over the MCP
         tools: `/sb call`, `/sb join <code>`). Optional sugar; MCP works without it. **[PARKED]**
-- [x] **Real responder productized** in `@switchboard/auto-attendant`:
+- [x] **Real responder productized** in `@magpie/auto-attendant`:
       `ClaudeResponder` runs the official CLI with stdin closed + read-only tools
       (`--allowedTools LS Glob Grep Read "Bash(ls:*)"`), `cwd`-scoped; added a
-      `switchboard-attend <code>` bin. ✅ verified live: a real claude attendant
+      `magpie-attend <code>` bin. ✅ verified live: a real claude attendant
       answered an asker's project question over the relay (E2E, no refusal).
 - [x] **Receiving-agent prompt tuned for TRUSTED collaborators** — "cooperative
       teammate" framing replaces the over-strict fence that made the agent refuse
@@ -73,8 +73,8 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
             else the file `responder`; `goOnDuty`/`dutyPresence` give a file-mtime
             heartbeat presence with no daemon/IPC. (19 auto-attendant tests.)
       - [x] Step 2: a LIVE responder = a running Claude Code session answering
-            via the Switchboard MCP is verified (sb_listen → read own repo →
-            sb_answer, in-session). Still optional: `switchboard-attend`
+            via the Magpie MCP is verified (sb_listen → read own repo →
+            sb_answer, in-session). Still optional: `magpie-attend`
             ergonomics (`--on-duty` heartbeat, handle) for the file-fallback side.
 - [x] **In-session agree-loop via MCP (A).** Added a 7th tool `sb_resolve(callId,
       summary)` so a LIVE agent can conclude a call itself (sends the verdict,
@@ -119,16 +119,16 @@ Release binaries: CLI 1.85 MB stripped, relay 1.04 MB; cold-start **18× faster*
 than Node (3.6 ms vs 66 ms). Test plan: `specs/TEST_PLAN.md`. Crypto corpus:
 `specs/fixtures/crypto-vectors.json`.
 
-- [x] **Phase 1 — Rust `relay`** (`rust/crates/switchboard-relay`). Crypto-free
+- [x] **Phase 1 — Rust `relay`** (`rust/crates/magpie-relay`). Crypto-free
       drop-in; wire-identical to the TS relay (NO changes needed to pass). 13 unit
       tests + `conformance/tests/13-rust-relay-interop.test.ts` (7 scenarios via
       the real TS client against the Rust binary).
-- [x] **Phase 2 — Rust `protocol`** (`switchboard-protocol`). HKDF-SHA256 (empty
+- [x] **Phase 2 — Rust `protocol`** (`magpie-protocol`). HKDF-SHA256 (empty
       salt, info `…:rendezvous:v1`/`…:channel:v1`) + AES-256-GCM (`iv‖tag‖ct`,
       detached tag, no AAD) **byte-identical to TS** — proven by cross-impl vectors
       (passed first try). 11 tests. RustCrypto (`hkdf`+`sha2`+`aes-gcm`), no regex dep.
-- [x] **Phase 3 — Rust `client` + `cli`** (`switchboard-client`, `switchboard-cli`).
-      tokio-tungstenite client (join-race fix preserved) + clap `switchboard` binary
+- [x] **Phase 3 — Rust `client` + `cli`** (`magpie-client`, `magpie-cli`).
+      tokio-tungstenite client (join-race fix preserved) + clap `magpie` binary
       (start/join/history/report, `/resolve` in-loop, 0600 reports). 10 + 25 tests.
 - [x] **Kept TS:** MCP server + auto-attendant/driver (unchanged, all green).
 - [x] **DECISION resolved:** surgical split (Rust infra + TS agent-glue). Full-Rust
@@ -166,14 +166,14 @@ commercialization → no hosted service/billing/token pressure. Relay is a ~1 MB
 binary → trivially self-hosted (own machine + Tailscale/LAN for a trusted pair,
 or a small cloud box). Onboarding = run relay → both `mcp add` at its URL → share
 a pairing code.
-- [x] Relay `Dockerfile` + `.dockerignore` (`docker build -t switchboard-relay rust/
+- [x] Relay `Dockerfile` + `.dockerignore` (`docker build -t magpie-relay rust/
       && docker run -p 8787:8787 …`). *(Untested locally — no docker on dev box;
       relay binary itself verified via interop/E2E.)*
 - [x] README self-host **Quickstart** (from-source path works today).
 - [x] Repo **English-only** (de-Koreanized the two multibyte test fixtures).
-- [ ] **npm publish `@switchboard/{protocol,client,mcp}`** → unlocks the
-      `npx -y @switchboard/mcp` one-liner (the actual "dead-simple" onboarding).
-      Needs: npm scope decision (is `@switchboard` free?) + monorepo publish setup.
+- [ ] **npm publish `@magpie/{protocol,client,mcp}`** → unlocks the
+      `npx -y @magpie/mcp` one-liner (the actual "dead-simple" onboarding).
+      Needs: npm scope decision (is `@magpie` free?) + monorepo publish setup.
 - [ ] Prebuilt relay/CLI **binaries + registry Docker image** (brew/curl install).
 - [ ] **Simple website** (30-sec explainer + copy-paste per-vendor commands).
 - [ ] **Flip repo public** — ONLY once the above are done (public now = pointless).
@@ -191,7 +191,7 @@ a pairing code.
 ## P1 — CLI / usability
 - [ ] Label your **own** sent messages (`› you:`) vs inbound (`📨`) — current bare
       terminal is confusing (hit live).
-- [ ] Global `switchboard` command (`npm link` / install) instead of long
+- [ ] Global `magpie` command (`npm link` / install) instead of long
       `node packages/cli/dist/bin.js`.
 - [ ] Pairing-code UX: 10-min TTL too short for human coordination; make TTL
       configurable + easy regenerate (hit live — codes kept expiring).
@@ -216,8 +216,8 @@ a pairing code.
 - [ ] **SPAKE2 PAKE** so short codes stay MITM-safe (currently HKDF-from-code).
 
 ## P3 — Robustness / cleanup
-- [ ] cross-process `switchboard hangup` rejected as non-participant (minor;
+- [ ] cross-process `magpie hangup` rejected as non-participant (minor;
       relies on SIGINT today).
 - [ ] Reconnect / dropped-socket handling mid-call.
-- [ ] Rename OS folder `agentmessenger` → `switchboard` (cosmetic; session cwd was
+- [ ] Rename OS folder `agentmessenger` → `magpie` (cosmetic; session cwd was
       pinned, so deferred).

@@ -1,6 +1,6 @@
 // @ts-check
 /*
- * Switchboard onboarding page — the zero-developer-skill surface.
+ * Magpie onboarding page — the zero-developer-skill surface.
  *
  * What this file does, end to end:
  *   1. Takes a pairing code the human pasted.
@@ -15,10 +15,10 @@
  * ───────────────────────────────────────────────────────────────────────────
  *  The relay brokers CIPHERTEXT ONLY. Two distinct one-way functions of the
  *  pairing code are in play, both HKDF-SHA256 (RFC 5869) with an empty salt,
- *  matching `@switchboard/protocol/pairing.ts` byte-for-byte:
+ *  matching `@magpie/protocol/pairing.ts` byte-for-byte:
  *
- *    rendezvousId = HKDF(code, info="switchboard:rendezvous:v1", 16 bytes)  → hex
- *    channelKey   = HKDF(code, info="switchboard:channel:v1",   32 bytes)  → AES-256-GCM key
+ *    rendezvousId = HKDF(code, info="magpie:rendezvous:v1", 16 bytes)  → hex
+ *    channelKey   = HKDF(code, info="magpie:channel:v1",   32 bytes)  → AES-256-GCM key
  *
  *  The rendezvous id is JUST a digest the relay matches on — so we compute it
  *  here for real, with WebCrypto, and JOIN actually works. Good.
@@ -41,7 +41,7 @@
  *    const base = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveKey']);
  *    const key  = await crypto.subtle.deriveKey(
  *      { name:'HKDF', hash:'SHA-256', salt:new Uint8Array(0),
- *        info: enc('switchboard:channel:v1') },
+ *        info: enc('magpie:channel:v1') },
  *      base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
  *    // open:  iv=frame[0:12]; tag=frame[12:28]; ct=frame[28:];
  *    //        crypto.subtle.decrypt({name:'AES-GCM', iv, additionalData:undefined,
@@ -55,13 +55,13 @@
 
 'use strict';
 
-// ── Constants mirrored from @switchboard/protocol (keep in sync) ─────────────
+// ── Constants mirrored from @magpie/protocol (keep in sync) ─────────────
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_GROUP_LEN = 4;
 const CODE_GROUPS = 3;
 const CODE_TOTAL_LEN = CODE_GROUP_LEN * CODE_GROUPS; // 12
 const PROTOCOL_VERSION = 1;
-const RENDEZVOUS_INFO = 'switchboard:rendezvous:v1';
+const RENDEZVOUS_INFO = 'magpie:rendezvous:v1';
 const DEFAULT_RELAY_URL = 'ws://localhost:8787';
 
 const enc = new TextEncoder();
@@ -88,9 +88,9 @@ const els = {
   cryptoStatus: $('cryptoStatus'),
 };
 
-// Prefill relay URL from the server injection (window.SWITCHBOARD_RELAY_URL) or default.
+// Prefill relay URL from the server injection (window.MAGPIE_RELAY_URL) or default.
 els.relay.value =
-  (typeof window !== 'undefined' && window.SWITCHBOARD_RELAY_URL) || DEFAULT_RELAY_URL;
+  (typeof window !== 'undefined' && window.MAGPIE_RELAY_URL) || DEFAULT_RELAY_URL;
 
 // ── Call state ───────────────────────────────────────────────────────────────
 /** @type {WebSocket | null} */ let ws = null;
@@ -120,7 +120,7 @@ function formatCodeInput(raw) {
 }
 
 /**
- * rendezvousId = HKDF-SHA256(code, salt=∅, info="switchboard:rendezvous:v1", 16B) → hex.
+ * rendezvousId = HKDF-SHA256(code, salt=∅, info="magpie:rendezvous:v1", 16B) → hex.
  * REAL crypto: this is the exact digest the relay pairs on. The browser can and
  * should compute it honestly — no code secrecy is lost (it's one-way).
  */
@@ -301,7 +301,7 @@ async function joinCall() {
 
   ws.addEventListener('open', () => {
     setStatus('Joining…', 'connecting');
-    // Control frame the relay expects (see @switchboard/relay JoinFrame).
+    // Control frame the relay expects (see @magpie/relay JoinFrame).
     ws?.send(JSON.stringify({ t: 'join', rendezvousId: rid, from }));
     // Optimistically reveal the call view; `joined`/`error` will confirm.
     enterCallView();

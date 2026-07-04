@@ -9,7 +9,7 @@ import {
   DEFAULT_MAX_TURNS,
   ABSOLUTE_MAX_TURNS,
   PROTOCOL_VERSION,
-} from '@switchboard/protocol';
+} from '@magpie/protocol';
 import type {
   Extension,
   Message,
@@ -17,7 +17,7 @@ import type {
   CallReport,
   CallOutcome,
   TranscriptEntry,
-} from '@switchboard/protocol';
+} from '@magpie/protocol';
 import type {
   ClientToRelay,
   OpenFrame,
@@ -50,7 +50,7 @@ interface Pending<T> {
 }
 
 /**
- * @switchboard/client — a thin WebSocket client to the relay plus the per-call
+ * @magpie/client — a thin WebSocket client to the relay plus the per-call
  * pairing crypto.
  *
  * The relay sees CIPHERTEXT ONLY: every `Message` is JSON-serialized, sealed
@@ -58,7 +58,7 @@ interface Pending<T> {
  * `frame`. The channel for a call is held here, keyed by callId, and is the
  * ONLY thing that can read peer payloads.
  */
-export class SwitchboardClient {
+export class MagpieClient {
   readonly #ws: WebSocket;
 
   /** Per-call E2E channel. The relay can never produce one of these. */
@@ -95,7 +95,7 @@ export class SwitchboardClient {
   }
 
   /** Open a WebSocket to the relay and resolve once it is ready. */
-  static connect(relayUrl: string): Promise<SwitchboardClient> {
+  static connect(relayUrl: string): Promise<MagpieClient> {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(relayUrl);
       const onError = (err: Error) => {
@@ -105,7 +105,7 @@ export class SwitchboardClient {
       ws.once('error', onError);
       ws.once('open', () => {
         ws.removeListener('error', onError);
-        resolve(new SwitchboardClient(ws));
+        resolve(new MagpieClient(ws));
       });
     });
   }
@@ -323,7 +323,7 @@ export class SwitchboardClient {
 
   #sendFrame(frame: ClientToRelay): void {
     if (this.#closed || this.#ws.readyState !== WebSocket.OPEN) {
-      throw new Error('switchboard client is not connected');
+      throw new Error('magpie client is not connected');
     }
     this.#ws.send(JSON.stringify(frame));
   }
@@ -333,12 +333,12 @@ export class SwitchboardClient {
     try {
       parsed = JSON.parse(data.toString());
     } catch {
-      process.stderr.write('[switchboard] dropped non-JSON relay frame\n');
+      process.stderr.write('[magpie] dropped non-JSON relay frame\n');
       return;
     }
     const frame = parseRelayFrame(parsed);
     if (!frame) {
-      process.stderr.write('[switchboard] dropped malformed relay frame\n');
+      process.stderr.write('[magpie] dropped malformed relay frame\n');
       return;
     }
 
@@ -389,7 +389,7 @@ export class SwitchboardClient {
   #onDeliver(callId: string, b64: string): void {
     const channel = this.#channels.get(callId);
     if (!channel) {
-      process.stderr.write(`[switchboard] deliver for unknown call ${callId}; dropped\n`);
+      process.stderr.write(`[magpie] deliver for unknown call ${callId}; dropped\n`);
       return;
     }
     let msg: Message;
@@ -400,7 +400,7 @@ export class SwitchboardClient {
       msg = parseMessage(json); // throws on schema violation
     } catch (err) {
       process.stderr.write(
-        `[switchboard] dropped undecryptable/invalid frame on ${callId}: ${String(err)}\n`,
+        `[magpie] dropped undecryptable/invalid frame on ${callId}: ${String(err)}\n`,
       );
       return;
     }
@@ -436,13 +436,13 @@ export class SwitchboardClient {
       pendingOpen.reject(err);
       return;
     }
-    process.stderr.write(`[switchboard] ${err.message}\n`);
+    process.stderr.write(`[magpie] ${err.message}\n`);
   }
 
   #onClose(reason: string): void {
     if (this.#closed) return;
     this.#closed = true;
-    const err = new Error(`switchboard disconnected: ${reason}`);
+    const err = new Error(`magpie disconnected: ${reason}`);
     for (const p of this.#pendingOpen.splice(0)) p.reject(err);
     for (const p of this.#pendingJoin.splice(0)) p.reject(err);
     this.#pendingChannel.splice(0);

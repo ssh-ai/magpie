@@ -1,6 +1,6 @@
 //! End-to-end integration tests: a real `start`/`join`/ask/answer/`resolve`
-//! round-trip driven by two `SwitchboardClient`s against the actual Rust relay
-//! binary (`switchboard-relay`). The relay is spawned as a child process bound
+//! round-trip driven by two `MagpieClient`s against the actual Rust relay
+//! binary (`magpie-relay`). The relay is spawned as a child process bound
 //! to an OS-assigned port (argv `0`); the port is scraped from its stderr.
 
 use std::io::{BufRead, BufReader};
@@ -9,8 +9,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::time::Duration;
 
-use switchboard_client::{
-    CallOutcome, JoinOpts, Message, MessageType, StartOpts, SwitchboardClient,
+use magpie_client::{
+    CallOutcome, JoinOpts, Message, MessageType, StartOpts, MagpieClient,
 };
 
 /// Kills the relay child on drop so a failing assert never leaks a process.
@@ -31,29 +31,29 @@ fn relay_binary() -> PathBuf {
     let target = std::env::var_os("CARGO_TARGET_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| manifest.join("../../target"));
-    target.join("debug").join("switchboard-relay")
+    target.join("debug").join("magpie-relay")
 }
 
 /// Ensure the relay binary is built (no-op under `cargo test` at the workspace
 /// root, which already compiles every member, but makes `-p` runs work too).
 fn ensure_relay_built() {
     let status = Command::new(env!("CARGO"))
-        .args(["build", "-p", "switchboard-relay"])
+        .args(["build", "-p", "magpie-relay"])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .status()
-        .expect("run cargo build for switchboard-relay");
-    assert!(status.success(), "failed to build switchboard-relay");
+        .expect("run cargo build for magpie-relay");
+    assert!(status.success(), "failed to build magpie-relay");
 }
 
 fn spawn_relay() -> RelayGuard {
     ensure_relay_built();
     let mut child = Command::new(relay_binary())
         .arg("0") // OS-assigned port
-        .env("SWITCHBOARD_RELAY_HOST", "127.0.0.1")
+        .env("MAGPIE_RELAY_HOST", "127.0.0.1")
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("spawn switchboard-relay");
+        .expect("spawn magpie-relay");
 
     let stderr = child.stderr.take().expect("relay stderr piped");
     let (tx, rx) = mpsc::channel::<u16>();
@@ -83,7 +83,7 @@ fn url(port: u16) -> String {
 fn query(call_id: &str, from: &str, to: &str, content: &str) -> Message {
     Message {
         v: 1,
-        id: switchboard_client_new_id(),
+        id: magpie_client_new_id(),
         call_id: call_id.to_string(),
         from: from.to_string(),
         to: to.to_string(),
@@ -102,7 +102,7 @@ fn response(call_id: &str, from: &str, to: &str, content: &str) -> Message {
 }
 
 // A valid `msg-` id without exposing the protocol crate's generator to the test.
-fn switchboard_client_new_id() -> String {
+fn magpie_client_new_id() -> String {
     "msg-0123456789abcdef".to_string()
 }
 
@@ -116,10 +116,10 @@ async fn recv<T>(rx: &mut tokio::sync::mpsc::UnboundedReceiver<T>) -> T {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn start_join_ask_answer_resolve_round_trip() {
     let relay = spawn_relay();
-    let opener = SwitchboardClient::connect(&url(relay.port))
+    let opener = MagpieClient::connect(&url(relay.port))
         .await
         .expect("opener connects");
-    let joiner = SwitchboardClient::connect(&url(relay.port))
+    let joiner = MagpieClient::connect(&url(relay.port))
         .await
         .expect("joiner connects");
 
@@ -235,7 +235,7 @@ async fn start_join_ask_answer_resolve_round_trip() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn join_unknown_rendezvous_is_rejected() {
     let relay = spawn_relay();
-    let joiner = SwitchboardClient::connect(&url(relay.port))
+    let joiner = MagpieClient::connect(&url(relay.port))
         .await
         .expect("joiner connects");
 
@@ -249,7 +249,7 @@ async fn join_unknown_rendezvous_is_rejected() {
         .expect_err("join on an unopened rendezvous must fail");
 
     match err {
-        switchboard_client::ClientError::Relay { code, .. } => {
+        magpie_client::ClientError::Relay { code, .. } => {
             assert_eq!(code, "UNKNOWN_RENDEZVOUS");
         }
         other => panic!("expected a relay UNKNOWN_RENDEZVOUS error, got {other:?}"),

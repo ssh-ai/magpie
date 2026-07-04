@@ -1,12 +1,12 @@
 [package]
-name = "switchboard-relay"
+name = "magpie-relay"
 version = "0.0.1"
 edition.workspace = true
 license.workspace = true
-description = "Switchboard relay — pairs two endpoints at a rendezvous and brokers sealed ciphertext frames. Never unseals; crypto-free."
+description = "Magpie relay — pairs two endpoints at a rendezvous and brokers sealed ciphertext frames. Never unseals; crypto-free."
 
 [[bin]]
-name = "switchboard-relay"
+name = "magpie-relay"
 path = "src/main.rs"
 
 [dependencies]

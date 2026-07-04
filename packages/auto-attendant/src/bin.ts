@@ -1,31 +1,31 @@
 #!/usr/bin/env node
-import { SwitchboardClient } from '@switchboard/client';
-import { DEFAULT_MAX_TURNS } from '@switchboard/protocol';
-import type { Extension } from '@switchboard/protocol';
+import { MagpieClient } from '@magpie/client';
+import { DEFAULT_MAX_TURNS } from '@magpie/protocol';
+import type { Extension } from '@magpie/protocol';
 import { AutoAttendant } from './auto-attendant.js';
 import { ClaudeResponder } from './adapters.js';
 
 /**
- * switchboard-attend <pairing-code>
+ * magpie-attend <pairing-code>
  *
- * Joins an existing Switchboard call and STAFFS it with a real agent: answers the
+ * Joins an existing Magpie call and STAFFS it with a real agent: answers the
  * teammate's questions from THIS project's files while the operator is away, and
  * escalates (hang up + notice) when it is not confident. Read-only by design.
  *
  * Env:
- *   SWITCHBOARD_RELAY_URL  (default ws://localhost:8787)
- *   SWITCHBOARD_EXTENSION  this agent's @owner/role
- *   SWITCHBOARD_CWD        project dir the agent may read (default: process.cwd())
+ *   MAGPIE_RELAY_URL  (default ws://localhost:8787)
+ *   MAGPIE_EXTENSION  this agent's @owner/role
+ *   MAGPIE_CWD        project dir the agent may read (default: process.cwd())
  */
 async function main(): Promise<void> {
   const code = process.argv[2];
-  if (!code) throw new Error('usage: switchboard-attend <pairing-code>');
+  if (!code) throw new Error('usage: magpie-attend <pairing-code>');
 
-  const relayUrl = process.env.SWITCHBOARD_RELAY_URL ?? 'ws://localhost:8787';
-  const self = (process.env.SWITCHBOARD_EXTENSION ?? '@me/agent') as Extension;
-  const cwd = process.env.SWITCHBOARD_CWD ?? process.cwd();
+  const relayUrl = process.env.MAGPIE_RELAY_URL ?? 'ws://localhost:8787';
+  const self = (process.env.MAGPIE_EXTENSION ?? '@me/agent') as Extension;
+  const cwd = process.env.MAGPIE_CWD ?? process.cwd();
 
-  const client = await SwitchboardClient.connect(relayUrl);
+  const client = await MagpieClient.connect(relayUrl);
   const { callId, peer } = await client.join({ from: self, code });
 
   const attendant = new AutoAttendant({

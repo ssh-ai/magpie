@@ -1,4 +1,4 @@
-//! On-disk store of end-of-call reports under `~/.switchboard/calls/`.
+//! On-disk store of end-of-call reports under `~/.magpie/calls/`.
 //!
 //! Mirror of `reports.ts`. This is the "report on termination" surface: even if
 //! a human was away when their agent finished a call, the conclusion +
@@ -11,14 +11,14 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use switchboard_client::{CallOutcome, CallReport};
+use magpie_client::{CallOutcome, CallReport};
 
-/// `~/.switchboard/calls`. Honors `$HOME`; falls back to the current dir.
+/// `~/.magpie/calls`. Honors `$HOME`; falls back to the current dir.
 fn calls_dir() -> PathBuf {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
-    home.join(".switchboard").join("calls")
+    home.join(".magpie").join("calls")
 }
 
 /// Persist a report. Returns the file path.
@@ -138,7 +138,7 @@ pub fn render_report(r: &CallReport) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use switchboard_client::{MessageType, TranscriptEntry};
+    use magpie_client::{MessageType, TranscriptEntry};
 
     fn report(outcome: CallOutcome, summary: Option<&str>, ended_at: &str) -> CallReport {
         CallReport {

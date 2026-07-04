@@ -1,12 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { generatePairingCode, normalizePairingCode, rendezvousId } from '@switchboard/protocol';
+import { generatePairingCode, normalizePairingCode, rendezvousId } from '@magpie/protocol';
 import { makeHarness, ALICE, BOB } from '../src/harness.js';
 import type { Harness } from '../src/harness.js';
 
 /**
  * SCENARIO 5 (prior art: discovery / listing of a session by id).
  *
- * Switchboard deliberately has NO server-side directory: discovery is the
+ * Magpie deliberately has NO server-side directory: discovery is the
  * out-of-band pairing code itself (the relay only ever sees a salted rendezvous
  * id, never the code). So "looking up the wrong session" maps to presenting a
  * wrong/unknown code. That must fail CLEANLY:

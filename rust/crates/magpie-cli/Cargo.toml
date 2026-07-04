@@ -1,0 +1,20 @@
+[package]
+name = "magpie-cli"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+description = "Magpie CLI — the non-developer-simple `magpie` command (start｜join｜history｜report) on top of magpie-client. Mirror of packages/cli (TS reference)."
+
+[[bin]]
+name = "magpie"
+path = "src/main.rs"
+
+[dependencies]
+magpie-client = { path = "../magpie-client" }
+magpie-protocol = { path = "../magpie-protocol" }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "signal", "sync"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

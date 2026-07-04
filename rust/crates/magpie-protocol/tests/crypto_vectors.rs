@@ -9,8 +9,8 @@
 //!   - opening the genuine TS-sealed `realSealedB64` recovers the plaintext.
 
 use serde_json::Value;
-use switchboard_protocol::pairing::{frame_from_b64, frame_to_b64};
-use switchboard_protocol::{channel_from_code, channel_key, rendezvous_id};
+use magpie_protocol::pairing::{frame_from_b64, frame_to_b64};
+use magpie_protocol::{channel_from_code, channel_key, rendezvous_id};
 
 fn load_fixture() -> Value {
     let path = concat!(
@@ -42,7 +42,7 @@ fn rendezvous_and_channel_key_match_ts() {
         // Sanity: normalized form matches the fixture's expectation.
         let want_norm = c["normalized"].as_str().unwrap();
         let got_norm =
-            switchboard_protocol::normalize_pairing_code(code).unwrap();
+            magpie_protocol::normalize_pairing_code(code).unwrap();
         assert_eq!(got_norm, want_norm, "normalized mismatch for {code}");
     }
 }

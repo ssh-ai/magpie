@@ -3,13 +3,13 @@ import {
   gateAction,
   newMessageId,
   PROTOCOL_VERSION,
-} from '@switchboard/protocol';
-import type { ActionPolicy, Extension, Message } from '@switchboard/protocol';
+} from '@magpie/protocol';
+import type { ActionPolicy, Extension, Message } from '@magpie/protocol';
 import type { Responder } from './responder.js';
 import { TypedEmitter } from './events.js';
 
 /**
- * The subset of @switchboard/client the attendant needs. Declaring it as an
+ * The subset of @magpie/client the attendant needs. Declaring it as an
  * interface (rather than depending on the concrete class) keeps the worker
  * testable with a fake transport and decoupled from connection lifecycle.
  */
@@ -73,7 +73,7 @@ export interface AutoAttendantOptions {
    * answers; otherwise the file-based {@link responder} does.
    */
   readonly isLive?: () => boolean | Promise<boolean>;
-  /** The connected transport (e.g. a SwitchboardClient). */
+  /** The connected transport (e.g. a MagpieClient). */
   readonly transport: CallTransport;
   /**
    * Hard cap on answered turns before auto-hangup + escalate. Mirrors the call's

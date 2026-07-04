@@ -6,8 +6,8 @@
 //! queries until the call ends. `history` and `report` are one-shot reads of the
 //! on-disk call store.
 
-use switchboard_client::{JoinOpts, StartOpts, SwitchboardClient};
-use switchboard_protocol::normalize_pairing_code;
+use magpie_client::{JoinOpts, StartOpts, MagpieClient};
+use magpie_protocol::normalize_pairing_code;
 
 use crate::env::{relay_url, require_extension};
 use crate::reports::{
@@ -20,18 +20,18 @@ type CmdResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
 /// The shareable invite line a human pastes into chat.
 pub fn share_line(code: &str) -> String {
-    format!("Patch your agent in:  switchboard join {code}")
+    format!("Patch your agent in:  magpie join {code}")
 }
 
 /// Print the end reason, then build + show + persist the call report. This is
 /// the "report on termination" the async value proposition depends on.
-fn finish_call(client: &SwitchboardClient, call_id: &str, result: StreamResult) {
+fn finish_call(client: &MagpieClient, call_id: &str, result: StreamResult) {
     println!("\n{}", result.reason);
     if let Some(report) = client.build_report(call_id, result.outcome) {
         println!("{}", render_report(&report));
         match save_report(&report) {
             Ok(path) => println!(
-                "📋 Report saved: {}  (re-read with: switchboard report {})",
+                "📋 Report saved: {}  (re-read with: magpie report {})",
                 path.display(),
                 report.call_id
             ),
@@ -45,7 +45,7 @@ fn finish_call(client: &SwitchboardClient, call_id: &str, result: StreamResult) 
 pub async fn start(topic: &str) -> CmdResult {
     let from = require_extension()?;
     let url = relay_url();
-    let client = SwitchboardClient::connect(&url).await?;
+    let client = MagpieClient::connect(&url).await?;
     let started = client
         .start(StartOpts {
             from: from.clone(),
@@ -54,7 +54,7 @@ pub async fn start(topic: &str) -> CmdResult {
         })
         .await?;
 
-    println!("☎️  Switchboard line open for: {topic}");
+    println!("☎️  Magpie line open for: {topic}");
     println!();
     println!("   Your code:  {}", started.code);
     println!("   {}", share_line(&started.code));
@@ -82,7 +82,7 @@ pub async fn join(raw_code: &str) -> CmdResult {
     let url = relay_url();
     // Normalize first for a friendly error on a bad-shaped code.
     let code = normalize_pairing_code(raw_code)?;
-    let client = SwitchboardClient::connect(&url).await?;
+    let client = MagpieClient::connect(&url).await?;
     let joined = client
         .join(JoinOpts {
             from: from.clone(),
@@ -107,7 +107,7 @@ pub async fn join(raw_code: &str) -> CmdResult {
     Ok(())
 }
 
-/// `history` — list past calls and their outcomes (from `~/.switchboard/calls/`).
+/// `history` — list past calls and their outcomes (from `~/.magpie/calls/`).
 /// This is how an away human catches up on what their agent concluded.
 pub fn history() {
     let reports = list_reports();
@@ -124,7 +124,7 @@ pub fn history() {
             r.peer.as_deref().unwrap_or("?"),
             r.topic
         );
-        println!("      switchboard report {}", r.call_id);
+        println!("      magpie report {}", r.call_id);
     }
 }
 
@@ -161,7 +161,7 @@ mod tests {
     fn share_line_is_copy_pasteable() {
         assert_eq!(
             share_line("K7F3-9M2P-XQ4R"),
-            "Patch your agent in:  switchboard join K7F3-9M2P-XQ4R"
+            "Patch your agent in:  magpie join K7F3-9M2P-XQ4R"
         );
     }
 }

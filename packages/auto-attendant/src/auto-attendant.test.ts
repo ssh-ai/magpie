@@ -4,8 +4,8 @@ import {
   newCallId,
   PROTOCOL_VERSION,
   DEFAULT_ACTION_POLICY,
-} from '@switchboard/protocol';
-import type { Extension, Message } from '@switchboard/protocol';
+} from '@magpie/protocol';
+import type { Extension, Message } from '@magpie/protocol';
 import { AutoAttendant } from './auto-attendant.js';
 import type { CallTransport, EscalateEvent, AnsweredEvent } from './auto-attendant.js';
 import { buildPrompt } from './responder.js';

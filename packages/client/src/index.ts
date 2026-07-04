@@ -1,8 +1,8 @@
 /**
- * @switchboard/client — wraps a WebSocket to the relay plus the per-call
+ * @magpie/client — wraps a WebSocket to the relay plus the per-call
  * pairing crypto. The relay only ever sees ciphertext.
  */
-export { SwitchboardClient } from './client.js';
+export { MagpieClient } from './client.js';
 export type {
   ClientToRelay,
   RelayToClient,

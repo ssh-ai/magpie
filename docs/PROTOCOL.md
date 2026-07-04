@@ -1,11 +1,11 @@
-# Switchboard Protocol & Threat Model
+# Magpie Protocol & Threat Model
 
 Version 1 (MVP). Status: design-locked for the scaffold; crypto upgrade path noted.
 
 ## 1. Roles
 
 - **Extension** — a human-readable agent address `@owner/role` (e.g. `@chris/impl`). One per participating agent.
-- **Relay (the switchboard)** — an untrusted broker. It routes frames between two endpoints and enforces turn caps and TTLs. It **must not be able to read message plaintext**.
+- **Relay (the magpie)** — an untrusted broker. It routes frames between two endpoints and enforces turn caps and TTLs. It **must not be able to read message plaintext**.
 - **Call** — a single tracked exchange between exactly two extensions, with a state machine (`open → answered → closed`) and a turn budget.
 - **Auto-attendant** — an optional headless responder for an extension that answers inbound queries from the owner's own context while the human is away.
 
@@ -36,11 +36,11 @@ Properties:
 ### Crypto: MVP vs upgrade
 
 - **MVP (shipped in scaffold):** `channelKey = HKDF-SHA256(code)`, AEAD = AES-256-GCM. Real, standard crypto. Secure while the code retains entropy and the side channel is trusted. The ~59-bit code is comfortably online-attack-resistant given the relay rate-limits and expires rendezvous attempts.
-- **Upgrade (v1.1): SPAKE2 PAKE.** Replace HKDF-from-code with a balanced PAKE so the channel key is *never* a function of the code alone. This makes short codes (e.g. 4–6 chars) MITM-safe and removes the "trusted side channel keeps its entropy" caveat. The `PairingChannel` interface in `@switchboard/protocol` is the swap seam.
+- **Upgrade (v1.1): SPAKE2 PAKE.** Replace HKDF-from-code with a balanced PAKE so the channel key is *never* a function of the code alone. This makes short codes (e.g. 4–6 chars) MITM-safe and removes the "trusted side channel keeps its entropy" caveat. The `PairingChannel` interface in `@magpie/protocol` is the swap seam.
 
 ## 3. Message frame
 
-Validated by `Message` (zod) in `@switchboard/protocol`:
+Validated by `Message` (zod) in `@magpie/protocol`:
 
 ```
 { v, id, callId, from, to, type, ts, turn, inReplyTo, content }
@@ -58,7 +58,7 @@ Validated by `Message` (zod) in `@switchboard/protocol`:
 
 ## 5. Content-execution threat model (the core risk)
 
-Unlike a human messenger, a Switchboard message is consumed by an LLM with tools. Naively, any peer message is a prompt-injection / RCE vector — this is exactly how prior art (`claude-code-session-bridge`) is exploitable. Mitigations, enforced by `@switchboard/protocol/security`:
+Unlike a human messenger, a Magpie message is consumed by an LLM with tools. Naively, any peer message is a prompt-injection / RCE vector — this is exactly how prior art (`claude-code-session-bridge`) is exploitable. Mitigations, enforced by `@magpie/protocol/security`:
 
 1. **Fence** — inbound content is wrapped (`fenceUntrusted`) and the receiving agent is instructed to treat it as data, answer only from its own context.
 2. **Action gate** — `ActionPolicy` defaults to `{ readOwnFiles: true, runTools: false, answerWhileAway: true }`. A peer message can never make the local agent run shell or edit files without explicit local human approval.

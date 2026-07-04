@@ -5,10 +5,10 @@ import {
   DEFAULT_MAX_TURNS,
   ABSOLUTE_MAX_TURNS,
   type CallState,
-} from '@switchboard/protocol';
+} from '@magpie/protocol';
 
 /**
- * In-memory switchboard state. MVP storage; swap for a shared/durable store
+ * In-memory magpie state. MVP storage; swap for a shared/durable store
  * (Redis/SQLite) without changing the {@link RelayServer} surface.
  *
  * The registry is intentionally transport-agnostic: it knows nothing about

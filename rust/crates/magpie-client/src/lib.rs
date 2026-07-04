@@ -1,4 +1,4 @@
-//! `switchboard-client` — a thin async WebSocket client to the relay plus the
+//! `magpie-client` — a thin async WebSocket client to the relay plus the
 //! per-call pairing crypto.
 //!
 //! Mirror of `packages/client/src/client.ts`. The relay sees CIPHERTEXT ONLY:
@@ -34,12 +34,12 @@ use tokio::sync::oneshot;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
-use switchboard_protocol::{
+use magpie_protocol::{
     channel_from_code, frame_from_b64, frame_to_b64, generate_pairing_code, new_message_id,
     parse_message, rendezvous_id, ABSOLUTE_MAX_TURNS, DEFAULT_MAX_TURNS, MAX_CONTENT_BYTES,
     PROTOCOL_VERSION,
 };
-pub use switchboard_protocol::{
+pub use magpie_protocol::{
     CallOutcome, Message, MessageType, PairingChannel, ProtocolError,
 };
 
@@ -108,8 +108,8 @@ impl std::fmt::Display for ClientError {
         match self {
             ClientError::Relay { code, message } => write!(f, "relay error [{code}]: {message}"),
             ClientError::Protocol(e) => write!(f, "protocol error: {e}"),
-            ClientError::Disconnected => write!(f, "switchboard disconnected"),
-            ClientError::NotConnected => write!(f, "switchboard client is not connected"),
+            ClientError::Disconnected => write!(f, "magpie disconnected"),
+            ClientError::NotConnected => write!(f, "magpie client is not connected"),
             ClientError::NoChannel(c) => write!(f, "no channel for call {c}"),
             ClientError::NoCall(c) => write!(f, "no such call {c}"),
             ClientError::NoPeer => write!(f, "cannot resolve before a peer has joined"),
@@ -213,13 +213,13 @@ pub struct JoinOpts {
 
 /// A thin async WebSocket client to the relay plus the per-call pairing crypto.
 #[derive(Clone)]
-pub struct SwitchboardClient {
+pub struct MagpieClient {
     inner: Arc<Inner>,
 }
 
-impl SwitchboardClient {
+impl MagpieClient {
     /// Open a WebSocket to the relay and resolve once it is ready.
-    pub async fn connect(relay_url: &str) -> Result<SwitchboardClient> {
+    pub async fn connect(relay_url: &str) -> Result<MagpieClient> {
         let (ws, _resp) = connect_async(relay_url)
             .await
             .map_err(|e| ClientError::Ws(e.to_string()))?;
@@ -235,7 +235,7 @@ impl SwitchboardClient {
         tokio::spawn(writer_task(write, out_rx));
         tokio::spawn(reader_task(read, inner.clone()));
 
-        Ok(SwitchboardClient { inner })
+        Ok(MagpieClient { inner })
     }
 
     /// Open a new call. Mints a fresh pairing code, derives the per-call channel,
@@ -539,7 +539,7 @@ fn dispatch(inner: &Arc<Inner>, text: &str) {
     let frame: RelayToClient = match serde_json::from_str(text) {
         Ok(f) => f,
         Err(_) => {
-            eprintln!("[switchboard] dropped malformed relay frame");
+            eprintln!("[magpie] dropped malformed relay frame");
             return;
         }
     };
@@ -596,14 +596,14 @@ fn on_deliver(inner: &Arc<Inner>, call_id: &str, b64: &str) {
         st.channels.get(call_id).cloned()
     };
     let Some(channel) = channel else {
-        eprintln!("[switchboard] deliver for unknown call {call_id}; dropped");
+        eprintln!("[magpie] deliver for unknown call {call_id}; dropped");
         return;
     };
 
     let msg = match decrypt_message(&channel, b64) {
         Ok(m) => m,
         Err(e) => {
-            eprintln!("[switchboard] dropped undecryptable/invalid frame on {call_id}: {e}");
+            eprintln!("[magpie] dropped undecryptable/invalid frame on {call_id}: {e}");
             return;
         }
     };
@@ -657,7 +657,7 @@ fn on_error(inner: &Arc<Inner>, code: String, message: String) {
         let _ = tx.send(Err(ClientError::Relay { code, message }));
         return;
     }
-    eprintln!("[switchboard] relay error [{code}]: {message}");
+    eprintln!("[magpie] relay error [{code}]: {message}");
 }
 
 fn on_close(inner: &Arc<Inner>) {

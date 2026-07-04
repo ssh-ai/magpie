@@ -3,9 +3,9 @@ import {
   newMessageId,
   PROTOCOL_VERSION,
   fenceUntrusted,
-} from '@switchboard/protocol';
-import type { Message } from '@switchboard/protocol';
-import { SwitchboardClient } from '@switchboard/client';
+} from '@magpie/protocol';
+import type { Message } from '@magpie/protocol';
+import { MagpieClient } from '@magpie/client';
 import { CallSession } from './session.js';
 
 /**
@@ -19,9 +19,9 @@ const CALL_ID = 'call-AAAAAAAAAA';
 const SELF = '@chris/impl';
 const PEER = '@sora/strategy';
 
-/** A SwitchboardClient stub that only records the messages a session sends. */
+/** A MagpieClient stub that only records the messages a session sends. */
 function fakeClient(): {
-  client: SwitchboardClient;
+  client: MagpieClient;
   sent: Message[];
   resolved: { callId: string; summary: string }[];
 } {
@@ -47,11 +47,11 @@ function fakeClient(): {
       endedAt: new Date().toISOString(),
       transcript: [],
     })),
-  } as unknown as SwitchboardClient;
+  } as unknown as MagpieClient;
   return { client, sent, resolved };
 }
 
-function newSession(client: SwitchboardClient): CallSession {
+function newSession(client: MagpieClient): CallSession {
   return new CallSession({
     client,
     callId: CALL_ID,

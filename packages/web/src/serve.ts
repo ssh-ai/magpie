@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * A tiny, dependency-free static file server for the Switchboard onboarding page.
+ * A tiny, dependency-free static file server for the Magpie onboarding page.
  *
  * This is intentionally NOT a framework. Its only job is to hand the browser
  * `index.html` and `app.js` so a non-developer can open a page and join a call.
@@ -15,7 +15,7 @@
  * Env:
  *   PORT       (default 4173)  port to listen on
  *   HOST       (default 127.0.0.1) bind address; loopback by default for safety
- *   RELAY_URL  (optional)      injected into the page as window.SWITCHBOARD_RELAY_URL
+ *   RELAY_URL  (optional)      injected into the page as window.MAGPIE_RELAY_URL
  *                              so the human doesn't have to type the relay address.
  */
 import { createServer } from 'node:http';
@@ -60,7 +60,7 @@ const server = createServer(async (req, res) => {
     if (pathname === '/') pathname = '/index.html';
 
     // Path-traversal guard: resolve against ROOT and refuse anything escaping it.
-    // (Same discipline as the rest of Switchboard — never trust an inbound path.)
+    // (Same discipline as the rest of Magpie — never trust an inbound path.)
     const resolved = normalize(join(ROOT, pathname));
     if (resolved !== ROOT && !resolved.startsWith(ROOT + sep)) {
       res.writeHead(403).end('forbidden\n');
@@ -72,7 +72,7 @@ const server = createServer(async (req, res) => {
     // Inject the configured relay URL into index.html so the operator can
     // preconfigure it (the human can still override it in the UI).
     if (resolved.endsWith('index.html')) {
-      const inject = `<script>window.SWITCHBOARD_RELAY_URL=${JSON.stringify(RELAY_URL)};</script>`;
+      const inject = `<script>window.MAGPIE_RELAY_URL=${JSON.stringify(RELAY_URL)};</script>`;
       body = Buffer.from(body.toString('utf8').replace('<!--RELAY_URL-->', inject), 'utf8');
     }
 
@@ -93,7 +93,7 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[web] Switchboard onboarding page on http://${HOST}:${PORT}`);
+  console.log(`[web] Magpie onboarding page on http://${HOST}:${PORT}`);
   if (RELAY_URL) console.log(`[web] relay preconfigured: ${RELAY_URL}`);
   else console.log(`[web] no RELAY_URL set; the page will ask for it (default ws://localhost:8787)`);
 });

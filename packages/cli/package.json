@@ -1,7 +1,7 @@
 {
-  "name": "@switchboard/cli",
+  "name": "@magpie/cli",
   "version": "0.0.1",
-  "description": "Switchboard CLI: the non-developer-simple surface. start｜join｜call｜listen｜hangup over a short pairing code.",
+  "description": "Magpie CLI: the non-developer-simple surface. start｜join｜call｜listen｜hangup over a short pairing code.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,7 +13,7 @@
     }
   },
   "bin": {
-    "switchboard": "./dist/bin.js"
+    "magpie": "./dist/bin.js"
   },
   "scripts": {
     "build": "tsc -b",
@@ -21,8 +21,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@switchboard/client": "*",
-    "@switchboard/protocol": "*",
+    "@magpie/client": "*",
+    "@magpie/protocol": "*",
     "commander": "^12.1.0"
   }
 }

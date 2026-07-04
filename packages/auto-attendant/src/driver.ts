@@ -1,5 +1,5 @@
-import { newMessageId, PROTOCOL_VERSION } from '@switchboard/protocol';
-import type { Extension, Message } from '@switchboard/protocol';
+import { newMessageId, PROTOCOL_VERSION } from '@magpie/protocol';
+import type { Extension, Message } from '@magpie/protocol';
 import type { CallTransport } from './auto-attendant.js';
 import { TypedEmitter } from './events.js';
 

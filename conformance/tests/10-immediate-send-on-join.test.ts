@@ -1,9 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { startRelay } from '@switchboard/relay';
-import type { RelayHandle } from '@switchboard/relay';
-import { SwitchboardClient } from '@switchboard/client';
-import { newMessageId, PROTOCOL_VERSION } from '@switchboard/protocol';
-import type { Extension } from '@switchboard/protocol';
+import { startRelay } from '@magpie/relay';
+import type { RelayHandle } from '@magpie/relay';
+import { MagpieClient } from '@magpie/client';
+import { newMessageId, PROTOCOL_VERSION } from '@magpie/protocol';
+import type { Extension } from '@magpie/protocol';
 
 /**
  * Regression for the join-race found in the first real cross-machine test:
@@ -26,8 +26,8 @@ describe('immediate send on join', () => {
   it('delivers a message sent the instant the peer joins (no drop)', async () => {
     relay = await startRelay(0, { host: '127.0.0.1' });
     const url = `ws://127.0.0.1:${relay.port}`;
-    const A = await SwitchboardClient.connect(url);
-    const B = await SwitchboardClient.connect(url);
+    const A = await MagpieClient.connect(url);
+    const B = await MagpieClient.connect(url);
 
     const got: string[] = [];
     B.onMessage((m) => got.push(m.content));

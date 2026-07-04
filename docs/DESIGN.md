@@ -18,7 +18,7 @@ Two people, each driving their own coding agent on a shared project, must keep t
 
 ## Security lessons lifted from the session-bridge teardown
 
-The teardown's vulns were rated low/info **only** under its "single-machine, trusted, same-UID" assumption. Switchboard breaks that assumption (cross-machine, easy onboarding), so each becomes a real remote vector and must be designed out from the start:
+The teardown's vulns were rated low/info **only** under its "single-machine, trusted, same-UID" assumption. Magpie breaks that assumption (cross-machine, easy onboarding), so each becomes a real remote vector and must be designed out from the start:
 
 - **Cross-session prompt injection** — peer content fed to an LLM told to *act* on it → fence as untrusted + action gate (`security.ts`).
 - **Path traversal / `rm -rf` on unvalidated ids/pointers** → strict `EXTENSION_RE`, `assertSafeExtension`, no peer-derived destructive paths.
@@ -26,4 +26,4 @@ The teardown's vulns were rated low/info **only** under its "single-machine, tru
 - **Unbounded message size** → `MAX_CONTENT_BYTES`.
 - **No turn cap (`while true`)** → first-class call state machine + `maxTurns`.
 
-The refuted-because-"trusted" pile from that audit is, in effect, Switchboard's requirements list.
+The refuted-because-"trusted" pile from that audit is, in effect, Magpie's requirements list.

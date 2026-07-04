@@ -1,21 +1,21 @@
 //! Environment configuration.
 //!
 //! Mirror of `env.ts`. Two inputs, both from the process environment:
-//!   - `SWITCHBOARD_RELAY_URL` — where the relay lives (default localhost).
-//!   - `SWITCHBOARD_EXTENSION` — this agent's `@owner/role` address.
+//!   - `MAGPIE_RELAY_URL` — where the relay lives (default localhost).
+//!   - `MAGPIE_EXTENSION` — this agent's `@owner/role` address.
 //!
 //! The `*_from` variants take the raw value explicitly so they can be unit
 //! tested without mutating the (process-global, test-racing) environment —
 //! the same way `cli.test.ts` passes an `env` object.
 
-use switchboard_protocol::is_valid_extension;
+use magpie_protocol::is_valid_extension;
 
-/// Default relay endpoint when `SWITCHBOARD_RELAY_URL` is unset.
+/// Default relay endpoint when `MAGPIE_RELAY_URL` is unset.
 pub const DEFAULT_RELAY_URL: &str = "ws://localhost:8787";
 
 /// Read the relay URL from the environment, falling back to localhost.
 pub fn relay_url() -> String {
-    relay_url_from(std::env::var("SWITCHBOARD_RELAY_URL").ok().as_deref())
+    relay_url_from(std::env::var("MAGPIE_RELAY_URL").ok().as_deref())
 }
 
 /// Pure core of [`relay_url`]: trim, and fall back to the default when blank.
@@ -26,24 +26,24 @@ pub fn relay_url_from(raw: Option<&str>) -> String {
     }
 }
 
-/// Read and validate the local agent's extension from `SWITCHBOARD_EXTENSION`.
+/// Read and validate the local agent's extension from `MAGPIE_EXTENSION`.
 /// Returns a friendly, actionable error string on missing/malformed input —
 /// this is the non-developer surface, so the message says exactly what to do.
 pub fn require_extension() -> Result<String, String> {
-    require_extension_from(std::env::var("SWITCHBOARD_EXTENSION").ok().as_deref())
+    require_extension_from(std::env::var("MAGPIE_EXTENSION").ok().as_deref())
 }
 
 /// Pure core of [`require_extension`].
 pub fn require_extension_from(raw: Option<&str>) -> Result<String, String> {
     let raw = raw.map(str::trim).unwrap_or("");
     if raw.is_empty() {
-        return Err("SWITCHBOARD_EXTENSION is not set. Pick an address for your agent, e.g.\n  \
-             export SWITCHBOARD_EXTENSION='@you/impl'"
+        return Err("MAGPIE_EXTENSION is not set. Pick an address for your agent, e.g.\n  \
+             export MAGPIE_EXTENSION='@you/impl'"
             .to_string());
     }
     if !is_valid_extension(raw) {
         return Err(format!(
-            "SWITCHBOARD_EXTENSION \"{raw}\" is not a valid extension.\n\
+            "MAGPIE_EXTENSION \"{raw}\" is not a valid extension.\n\
              Use lowercase @owner/role, e.g. '@chris/impl' or '@sora/strategy'."
         ));
     }
@@ -79,9 +79,9 @@ mod tests {
     #[test]
     fn require_extension_friendly_error_when_missing() {
         let err = require_extension_from(None).unwrap_err();
-        assert!(err.contains("SWITCHBOARD_EXTENSION is not set"));
+        assert!(err.contains("MAGPIE_EXTENSION is not set"));
         let err = require_extension_from(Some("   ")).unwrap_err();
-        assert!(err.contains("SWITCHBOARD_EXTENSION is not set"));
+        assert!(err.contains("MAGPIE_EXTENSION is not set"));
     }
 
     #[test]

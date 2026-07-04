@@ -1,16 +1,16 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
-import type { CallReport, CallOutcome } from '@switchboard/protocol';
+import type { CallReport, CallOutcome } from '@magpie/protocol';
 
 /**
- * On-disk store of end-of-call reports under ~/.switchboard/calls/. This is the
+ * On-disk store of end-of-call reports under ~/.magpie/calls/. This is the
  * "report on termination" surface: even if a human was away when their agent
  * finished a call, the conclusion + transcript wait here. Files are 0600; the
  * transcript is plaintext-on-this-machine (the user's own side of the call).
  */
 
-const dir = (): string => join(homedir(), '.switchboard', 'calls');
+const dir = (): string => join(homedir(), '.magpie', 'calls');
 
 /** Persist a report. Returns the file path. */
 export function saveReport(r: CallReport): string {

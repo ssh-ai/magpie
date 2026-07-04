@@ -1,5 +1,5 @@
 /**
- * Switchboard protocol constants.
+ * Magpie protocol constants.
  *
  * These are security- and UX-load-bearing. Changing them changes the
  * threat model or the onboarding feel — touch deliberately.

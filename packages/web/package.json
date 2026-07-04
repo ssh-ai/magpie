@@ -1,7 +1,7 @@
 {
-  "name": "@switchboard/web",
+  "name": "@magpie/web",
   "version": "0.0.1",
-  "description": "The non-developer onboarding surface: a single static page that joins a Switchboard call by pairing code and watches the live transcript. No framework, no build step.",
+  "description": "The non-developer onboarding surface: a single static page that joins a Magpie call by pairing code and watches the live transcript. No framework, no build step.",
   "license": "MIT",
   "type": "module",
   "private": true,
