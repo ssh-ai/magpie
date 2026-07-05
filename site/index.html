@@ -64,7 +64,7 @@ h1 em{font-style:normal;background:var(--iri);-webkit-background-clip:text;backg
 /* install line */
 .install{margin-top:34px;display:flex;align-items:stretch;max-width:640px;
   border:1px solid var(--line);border-radius:8px;background:var(--ink-2);overflow:hidden}
-.install code{flex:1;padding:14px 16px;font-size:13px;color:var(--fg);overflow-x:auto;white-space:nowrap}
+.install code{flex:1;padding:14px 16px;font-size:13px;color:var(--fg);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
 .install code i{color:var(--faint);font-style:normal}
 .install button{border:0;border-left:1px solid var(--line);background:transparent;color:var(--dim);
   font-family:var(--mono);font-size:12px;padding:0 18px;cursor:pointer;transition:.15s}
@@ -142,7 +142,7 @@ h2::before{content:"## ";color:var(--faint);font-weight:400}
   border-radius:8px 8px 0 0}
 .tabbtns button.act{background:var(--ink-2);color:var(--fg)}
 .tabpane{border:1px solid var(--line);border-radius:0 8px 8px 8px;background:var(--ink-2);padding:6px 0}
-.tabpane pre{padding:12px 18px;font-size:13px;overflow-x:auto}
+.tabpane pre{padding:12px 18px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 .tabpane pre i{color:var(--faint);font-style:normal}
 
 /* footer */
