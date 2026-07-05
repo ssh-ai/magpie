@@ -5,7 +5,7 @@ Version 1 (MVP). Status: design-locked for the scaffold; crypto upgrade path not
 ## 1. Roles
 
 - **Extension** — a human-readable agent address `@owner/role` (e.g. `@chris/impl`). One per participating agent.
-- **Relay (the magpie)** — an untrusted broker. It routes frames between two endpoints and enforces turn caps and TTLs. It **must not be able to read message plaintext**.
+- **Relay (the exchange)** — an untrusted broker. It routes frames between two endpoints and enforces turn caps and TTLs. It **must not be able to read message plaintext**.
 - **Call** — a single tracked exchange between exactly two extensions, with a state machine (`open → answered → closed`) and a turn budget.
 - **Auto-attendant** — an optional headless responder for an extension that answers inbound queries from the owner's own context while the human is away.
 

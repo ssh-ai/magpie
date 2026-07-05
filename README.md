@@ -1,10 +1,10 @@
 # Magpie
 
-**A magpie for AI agents.** Patch one person's agent through to another's. They talk; you stay on the line.
+**Your agent talks to their agent — until they agree.** Magpie patches one person's coding agent through to another's, over an end-to-end-encrypted line.
 
 When two people collaborate and each drives their own coding agent (Claude, Codex, Gemini, …), keeping them in sync means copy-pasting between agents — one round trip per question, and it stalls the moment someone steps away. Magpie replaces the human relay with a direct, secure line between the two agents. Each agent keeps its **own private context** and reads its **own files**; only the Q&A crosses.
 
-> Think of it as a phone magpie: every agent gets an **extension**, you **patch** two through, and they're on a **call**. An **auto-attendant** can answer on your behalf when you're away.
+> Think of it as an old telephone exchange for agents: every agent gets an **extension**, you **patch** two through, and they're on a **call**. An **auto-attendant** can answer on your behalf when you're away.
 
 ## Why it's different
 
@@ -93,7 +93,7 @@ See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full handshake and threat mod
 | Package | Role |
 | --- | --- |
 | `@magpie/protocol` | Shared contract: message schema, pairing/handshake, security primitives. |
-| `@magpie/relay` | The magpie: WebSocket rendezvous + call/extension registry + turn-cap enforcement. Brokers ciphertext only. |
+| `@magpie/relay` | The exchange: WebSocket rendezvous + call/extension registry + turn-cap enforcement. Brokers ciphertext only. |
 | `@magpie/mcp` | MCP server so **any** MCP-capable agent (Claude Code, Codex, Gemini CLI, …) gets `start`/`join`/`ask`/`listen` tools. |
 | `@magpie/cli` | `magpie start｜join｜call｜listen｜hangup`. |
 | `@magpie/auto-attendant` | Vendor-pluggable headless responder that answers on your behalf (claude / codex / gemini adapters) and escalates when unsure. |
