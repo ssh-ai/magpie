@@ -1,6 +1,6 @@
 # Magpie installer (Windows) — no Node/npm/docker required.
 #
-#   irm https://raw.githubusercontent.com/ssh-ai/magpie/main/scripts/install.ps1 | iex
+#   irm https://ssh-ai.github.io/magpie/install.ps1 | iex
 #
 # Installs magpie binaries to ~\.magpie\bin and registers the MCP server with
 # Claude Code if present.

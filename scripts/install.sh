@@ -1,7 +1,7 @@
 #!/bin/sh
 # Magpie installer — one line, no Node/npm/docker required.
 #
-#   curl -fsSL https://raw.githubusercontent.com/ssh-ai/magpie/main/scripts/install.sh | sh
+#   curl -fsSL https://ssh-ai.github.io/magpie/install.sh | sh
 #
 # Installs the magpie binaries (CLI, relay, MCP server — all standalone) into
 # ~/.magpie/bin and auto-registers the MCP server with any agents it can detect
