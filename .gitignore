@@ -10,3 +10,4 @@ coverage/
 .magpie/
 
 *.bun-build
+.claude/
