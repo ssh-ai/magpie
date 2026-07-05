@@ -17,19 +17,32 @@ jobs:
         include:
           - runner: macos-14
             target: darwin-arm64
-          - runner: macos-13
+            rust_target: aarch64-apple-darwin
+            bun_target: bun-darwin-arm64
+          # macos-13 (Intel) runners are retired — cross-compile from arm64.
+          - runner: macos-14
             target: darwin-x64
+            rust_target: x86_64-apple-darwin
+            bun_target: bun-darwin-x64
           - runner: ubuntu-latest
             target: linux-x64
+            rust_target: x86_64-unknown-linux-gnu
+            bun_target: bun-linux-x64
           - runner: ubuntu-24.04-arm
             target: linux-arm64
+            rust_target: aarch64-unknown-linux-gnu
+            bun_target: bun-linux-arm64
           - runner: windows-latest
             target: windows-x64
+            rust_target: x86_64-pc-windows-msvc
+            bun_target: bun-windows-x64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
 
       - uses: oven-sh/setup-bun@v2
 
@@ -37,21 +50,23 @@ jobs:
         with: { node-version: 22 }
 
       - name: Build Rust binaries
-        run: cargo build --release --manifest-path rust/Cargo.toml -p magpie-cli -p magpie-relay
+        run: cargo build --release --manifest-path rust/Cargo.toml --target ${{ matrix.rust_target }} -p magpie-cli -p magpie-relay
 
-      # npm creates the @magpie/* workspace symlinks bun's bundler resolves
-      # (bun install alone left the scope unresolved in CI).
+      # npm materializes the @magpie/* workspace links, tsc emits the dist/
+      # entrypoints those packages point at — bun then bundles from source.
       - name: Build MCP binary (bun compile)
         run: |
           npm install --no-audit --no-fund
-          bun build --compile packages/mcp/src/bin.ts --outfile magpie-mcp
+          npx tsc -b
+          bun build --compile --target=${{ matrix.bun_target }} packages/mcp/src/bin.ts --outfile magpie-mcp
         shell: bash
 
       - name: Package (unix)
         if: runner.os != 'Windows'
         run: |
           mkdir -p dist
-          cp rust/target/release/magpie rust/target/release/magpie-relay magpie-mcp dist/
+          cp rust/target/${{ matrix.rust_target }}/release/magpie rust/target/${{ matrix.rust_target }}/release/magpie-relay dist/
+          cp magpie-mcp dist/
           tar -czf magpie-${{ matrix.target }}.tar.gz -C dist magpie magpie-relay magpie-mcp
 
       - name: Package (windows)
@@ -59,7 +74,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item rust/target/release/magpie.exe, rust/target/release/magpie-relay.exe, magpie-mcp.exe dist/
+          Copy-Item rust/target/${{ matrix.rust_target }}/release/magpie.exe, rust/target/${{ matrix.rust_target }}/release/magpie-relay.exe dist/
+          Copy-Item magpie-mcp.exe dist/
           Compress-Archive -Path dist/* -DestinationPath magpie-windows-x64.zip
 
       - uses: softprops/action-gh-release@v2
