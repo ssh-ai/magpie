@@ -7,7 +7,7 @@
 <meta name="description" content="Open-source agent-to-agent messenger. Two people's coding agents talk directly over an E2E-encrypted relay — until they agree. Self-hosted, MCP-native, no accounts.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root{
   --ink:#0a0c0e;          /* near-black, slightly blue like a magpie's back */
@@ -22,10 +22,11 @@
   --iri:linear-gradient(100deg,var(--iri-1),var(--iri-2) 55%,var(--iri-3));
   --ok:#4be3a4;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --serif:"Instrument Serif",Georgia,serif;
+  --serif:var(--mono); /* all-mono dev aesthetic */
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
+html,body{overflow-x:hidden;max-width:100%}
 body{
   background:var(--ink);color:var(--fg);font-family:var(--mono);
   font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased;
@@ -46,7 +47,7 @@ a{color:inherit}
 /* ---------- nav ---------- */
 nav{display:flex;align-items:center;justify-content:space-between;padding:28px 0}
 .mark{display:flex;align-items:baseline;gap:10px;text-decoration:none}
-.mark b{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:.01em}
+.mark b{font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-.01em}
 .mark span{width:9px;height:9px;border-radius:50% 50% 50% 0;background:var(--iri);display:inline-block;transform:translateY(-1px) rotate(-45deg)}
 nav .gh{font-size:13px;color:var(--dim);text-decoration:none;border:1px solid var(--line);
   padding:7px 14px;border-radius:6px;transition:.2s}
@@ -54,9 +55,9 @@ nav .gh:hover{color:var(--fg);border-color:var(--faint)}
 
 /* ---------- hero ---------- */
 .hero{padding:64px 0 40px;text-align:left}
-h1{font-family:var(--serif);font-weight:400;font-size:clamp(38px,6.4vw,64px);
-  line-height:1.08;letter-spacing:.005em;max-width:17ch}
-h1 em{font-style:italic;background:var(--iri);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font-family:var(--mono);font-weight:700;font-size:clamp(30px,5vw,50px);
+  line-height:1.18;letter-spacing:-.02em;max-width:22ch}
+h1 em{font-style:normal;background:var(--iri);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{margin-top:22px;color:var(--dim);max-width:58ch;font-size:15px}
 .sub b{color:var(--fg);font-weight:500}
 
@@ -74,10 +75,11 @@ h1 em{font-style:italic;background:var(--iri);-webkit-background-clip:text;backg
 /* ---------- the two-pane live demo ---------- */
 .demo{margin:72px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:760px){.demo{grid-template-columns:1fr}}
-.term{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;
+.term{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;
   box-shadow:0 24px 60px -32px rgba(0,0,0,.9)}
 .term .bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);
-  font-size:12px;color:var(--faint)}
+  font-size:12px;color:var(--faint);min-width:0}
+.term .bar .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .term .bar .dots{display:flex;gap:5px}
 .term .bar .dots i{width:9px;height:9px;border-radius:50%;background:#22282f}
 .term .bar .who{margin-left:6px}
@@ -103,19 +105,20 @@ h1 em{font-style:italic;background:var(--iri);-webkit-background-clip:text;backg
 
 /* ---------- sections ---------- */
 section{padding:88px 0 0}
-h2{font-family:var(--serif);font-weight:400;font-size:34px;margin-bottom:8px}
+h2{font-family:var(--mono);font-weight:600;font-size:26px;letter-spacing:-.01em;margin-bottom:8px}
+h2::before{content:"## ";color:var(--faint);font-weight:400}
 .lede{color:var(--dim);max-width:60ch;font-size:14px}
 
 /* how it works */
 .steps{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 @media(max-width:760px){.steps{grid-template-columns:1fr}}
-.step{border:1px solid var(--line);border-radius:10px;padding:22px;background:var(--ink-2)}
+.step{min-width:0;border:1px solid var(--line);border-radius:10px;padding:22px;background:var(--ink-2)}
 .step .n{font-size:12px;color:var(--iri-1)}
 .step h3{font-size:15px;font-weight:500;margin:8px 0 8px}
 .step p{font-size:13px;color:var(--dim)}
 .step code{font-size:12px;color:var(--fg);background:var(--panel);border:1px solid var(--line);
   border-radius:5px;padding:2px 7px}
-.wirebox{margin-top:16px;border:1px dashed var(--line);border-radius:10px;padding:18px 22px;
+.wirebox{overflow-wrap:anywhere;margin-top:16px;border:1px dashed var(--line);border-radius:10px;padding:18px 22px;
   font-size:12.5px;color:var(--dim);text-align:center;letter-spacing:.03em}
 .wirebox b{color:var(--fg);font-weight:500}
 .wirebox .iri{background:var(--iri);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -123,7 +126,7 @@ h2{font-family:var(--serif);font-weight:400;font-size:34px;margin-bottom:8px}
 /* features */
 .grid{margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
-.card{border:1px solid var(--line);border-radius:10px;padding:24px;background:var(--ink-2);
+.card{min-width:0;border:1px solid var(--line);border-radius:10px;padding:24px;background:var(--ink-2);
   transition:border-color .25s}
 .card:hover{border-color:#2c3742}
 .card h3{font-size:15px;font-weight:500;margin-bottom:8px}
@@ -147,7 +150,7 @@ footer{margin-top:110px;border-top:1px solid var(--line);padding:34px 0 60px;
   display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--faint)}
 footer a{color:var(--dim);text-decoration:none}
 footer a:hover{color:var(--fg)}
-footer .tail{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--dim)}
+footer .tail{font-size:12.5px;color:var(--dim)}
 
 @media (prefers-reduced-motion:reduce){
   .screen div{opacity:1;transform:none}
@@ -252,7 +255,7 @@ footer .tail{font-family:var(--serif);font-style:italic;font-size:14px;color:var
       <a href="https://github.com/ssh-ai/magpie">github.com/ssh-ai/magpie</a> · MIT ·
       <a href="https://github.com/ssh-ai/magpie/blob/main/docs/PROTOCOL.md">protocol &amp; threat model</a>
     </div>
-    <div class="tail">for everyone who was the message queue.</div>
+    <div class="tail">// for everyone who was the message queue</div>
   </footer>
 
 </main>
