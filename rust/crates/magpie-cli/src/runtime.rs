@@ -150,16 +150,32 @@ pub async fn stream_until_done(
         });
     }
 
-    // SIGINT handler installed once (a fresh `ctrl_c()` per loop turn could miss
-    // a signal that lands between turns).
-    let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
-        .expect("install SIGINT handler");
+    // Ctrl-C handler installed once, feeding a channel (a fresh `ctrl_c()` per
+    // loop turn could miss a signal that lands between turns). `ctrl_c()` is
+    // cross-platform (SIGINT on unix, console events on Windows); if install
+    // fails we degrade gracefully — the call still ends on peer resolve/hangup.
+    let (sig_tx, mut sigint) = tokio::sync::mpsc::unbounded_channel::<()>();
+    tokio::spawn(async move {
+        loop {
+            match tokio::signal::ctrl_c().await {
+                Ok(()) => {
+                    if sig_tx.send(()).is_err() {
+                        break;
+                    }
+                }
+                Err(err) => {
+                    eprintln!("warning: Ctrl-C handler unavailable: {err}");
+                    break;
+                }
+            }
+        }
+    });
 
     let Some(s) = send else {
         // Read-only watch: end on peer/hangup or Ctrl-C.
         return tokio::select! {
             Some(res) = fin_rx.recv() => res,
-            _ = sigint.recv() => hung_up(),
+            Some(()) = sigint.recv() => hung_up(),
         };
     };
 
@@ -171,7 +187,7 @@ pub async fn stream_until_done(
         tokio::select! {
             biased;
             Some(res) = fin_rx.recv() => break res,
-            _ = sigint.recv() => break hung_up(),
+            Some(()) = sigint.recv() => break hung_up(),
             line = lines.next_line(), if stdin_open => {
                 match line {
                     Ok(Some(line)) => {

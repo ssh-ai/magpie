@@ -33,12 +33,17 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+
       - name: Build Rust binaries
         run: cargo build --release --manifest-path rust/Cargo.toml -p magpie-cli -p magpie-relay
 
+      # npm creates the @magpie/* workspace symlinks bun's bundler resolves
+      # (bun install alone left the scope unresolved in CI).
       - name: Build MCP binary (bun compile)
         run: |
-          bun install --frozen-lockfile || bun install
+          npm install --no-audit --no-fund
           bun build --compile packages/mcp/src/bin.ts --outfile magpie-mcp
         shell: bash
 
