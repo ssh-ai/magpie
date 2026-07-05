@@ -4,6 +4,8 @@ import {
   normalizePairingCode,
   formatInvite,
   parseInvite,
+  isLoopbackRelayUrl,
+  loopbackInviteWarning,
   rendezvousId,
   channelFromCode,
   EXTENSION_RE,
@@ -96,6 +98,33 @@ describe('invite tokens (CODE@relay-url)', () => {
     const parsed = parseInvite(formatInvite(code, url));
     expect(parsed.code).toBe(normalizePairingCode(code));
     expect(parsed.relayUrl).toBe(url);
+  });
+
+  it('flags loopback relay URLs (peer on another machine cannot join)', () => {
+    for (const url of [
+      'ws://localhost:8787',
+      'ws://relay.localhost:8787',
+      'ws://127.0.0.1:8787',
+      'ws://127.9.9.9:8787',
+      'ws://[::1]:8787',
+      'ws://0.0.0.0:8787',
+    ]) {
+      expect(isLoopbackRelayUrl(url), url).toBe(true);
+      expect(loopbackInviteWarning(url), url).toMatch(/loopback-only/);
+    }
+  });
+
+  it('does not flag reachable relay URLs (and never throws on garbage)', () => {
+    for (const url of [
+      'ws://192.168.0.13:8787',
+      'wss://relay.example',
+      'wss://user:pw@relay.example:9000',
+      'ws://100.64.1.5:8787', // Tailscale CGNAT range
+    ]) {
+      expect(isLoopbackRelayUrl(url), url).toBe(false);
+      expect(loopbackInviteWarning(url), url).toBeNull();
+    }
+    expect(isLoopbackRelayUrl('not a url')).toBe(false);
   });
 });
 

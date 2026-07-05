@@ -54,6 +54,57 @@ pub fn format_invite(code: &str, relay_url: &str) -> Result<String> {
     Ok(format!("{display}@{url}"))
 }
 
+/// Extract the host from a `ws://`/`wss://` URL without a URL crate: take the
+/// authority (up to the first `/`, `?`, or `#`), drop userinfo (up to the last
+/// `@`), then strip the port / IPv6 brackets.
+fn relay_host(relay_url: &str) -> Option<String> {
+    let lower = relay_url.trim().to_ascii_lowercase();
+    let rest = lower
+        .strip_prefix("ws://")
+        .or_else(|| lower.strip_prefix("wss://"))?;
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    let host_port = authority.rsplit('@').next().unwrap_or(authority);
+    let host = match host_port.strip_prefix('[') {
+        Some(bracketed) => bracketed.split(']').next().unwrap_or(""),
+        None => host_port.split(':').next().unwrap_or(host_port),
+    };
+    Some(host.to_string())
+}
+
+/// True when a relay URL's host is loopback / unroutable (`localhost`,
+/// `*.localhost`, `127.0.0.0/8`, `::1`, `0.0.0.0`, `::`) — reachable only from
+/// the machine the relay runs on. An invite carrying such a URL joins fine
+/// locally but is dead on arrival for a peer on another machine, with no error
+/// on the composing side, so callers surface a warning at composition time.
+/// Mirrors `isLoopbackRelayUrl`.
+pub fn is_loopback_relay_url(relay_url: &str) -> bool {
+    match relay_host(relay_url) {
+        Some(host) => {
+            host == "localhost"
+                || host.ends_with(".localhost")
+                || host.starts_with("127.")
+                || host == "::1"
+                || host == "0.0.0.0"
+                || host == "::"
+        }
+        None => false,
+    }
+}
+
+/// The human-facing warning for a loopback-relay invite, or `None` if the URL
+/// is fine. Mirrors `loopbackInviteWarning` (one canonical message).
+pub fn loopback_invite_warning(relay_url: &str) -> Option<String> {
+    if !is_loopback_relay_url(relay_url) {
+        return None;
+    }
+    Some(format!(
+        "⚠️ this invite's relay ({}) is loopback-only — a peer on another machine \
+         cannot reach it. Unless the other agent runs on this same machine, use a \
+         LAN/Tailscale/public relay URL (e.g. ws://<your-lan-ip>:8787).",
+        relay_url.trim()
+    ))
+}
+
 /// Parse an invite OR a bare pairing code. Mirrors `parseInvite`.
 ///
 /// - `K7F3-9M2P-XQ4R@ws://host:8787` → code `K7F39M2PXQ4R`, relay `ws://host:8787`
@@ -142,6 +193,38 @@ mod tests {
         ));
         assert!(parse_invite("@ws://host:8787").is_err()); // empty code part
         assert!(parse_invite("total garbage").is_err());
+    }
+
+    #[test]
+    fn flags_loopback_relay_urls() {
+        for url in [
+            "ws://localhost:8787",
+            "ws://relay.localhost:8787",
+            "ws://127.0.0.1:8787",
+            "ws://127.9.9.9:8787",
+            "ws://[::1]:8787",
+            "ws://0.0.0.0:8787",
+        ] {
+            assert!(is_loopback_relay_url(url), "{url}");
+            assert!(
+                loopback_invite_warning(url).unwrap().contains("loopback-only"),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn does_not_flag_reachable_relay_urls_and_never_panics_on_garbage() {
+        for url in [
+            "ws://192.168.0.13:8787",
+            "wss://relay.example",
+            "wss://user:pw@relay.example:9000",
+            "ws://100.64.1.5:8787", // Tailscale CGNAT range
+        ] {
+            assert!(!is_loopback_relay_url(url), "{url}");
+            assert!(loopback_invite_warning(url).is_none(), "{url}");
+        }
+        assert!(!is_loopback_relay_url("not a url"));
     }
 
     #[test]

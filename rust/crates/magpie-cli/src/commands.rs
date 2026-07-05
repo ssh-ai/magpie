@@ -7,7 +7,7 @@
 //! on-disk call store.
 
 use magpie_client::{JoinOpts, StartOpts, MagpieClient};
-use magpie_protocol::{format_invite, parse_invite};
+use magpie_protocol::{format_invite, loopback_invite_warning, parse_invite};
 
 use crate::env::{relay_url, require_extension};
 use crate::reports::{
@@ -62,6 +62,10 @@ pub async fn start(topic: &str) -> CmdResult {
     println!();
     println!("   Your code:  {}", started.code);
     println!("   {}", share_line(&started.code, &url));
+    if let Some(warning) = loopback_invite_warning(&url) {
+        println!();
+        println!("   {warning}");
+    }
     println!();
     println!("Waiting on the line… (Ctrl-C to hang up)");
 

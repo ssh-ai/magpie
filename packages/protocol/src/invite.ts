@@ -52,6 +52,44 @@ export function formatInvite(code: string, relayUrl: string): string {
 }
 
 /**
+ * True when a relay URL's host is loopback / unroutable (`localhost`,
+ * `*.localhost`, `127.0.0.0/8`, `::1`, `0.0.0.0`, `::`) — reachable only from
+ * the machine the relay runs on. An invite carrying such a URL joins fine
+ * locally but is dead on arrival for a peer on another machine, with no error
+ * on the composing side, so callers surface a warning at composition time.
+ */
+export function isLoopbackRelayUrl(relayUrl: string): boolean {
+  let host: string;
+  try {
+    host = new URL(relayUrl.trim()).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (host.startsWith('[') && host.endsWith(']')) host = host.slice(1, -1);
+  return (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.startsWith('127.') ||
+    host === '::1' ||
+    host === '0.0.0.0' ||
+    host === '::'
+  );
+}
+
+/**
+ * The human-facing warning for a loopback-relay invite, or null if the URL is
+ * fine. One canonical message, mirrored by the Rust twin.
+ */
+export function loopbackInviteWarning(relayUrl: string): string | null {
+  if (!isLoopbackRelayUrl(relayUrl)) return null;
+  return (
+    `⚠️ this invite's relay (${relayUrl.trim()}) is loopback-only — a peer on ` +
+    `another machine cannot reach it. Unless the other agent runs on this same ` +
+    `machine, use a LAN/Tailscale/public relay URL (e.g. ws://<your-lan-ip>:8787).`
+  );
+}
+
+/**
  * Parse an invite OR a bare pairing code.
  *
  * - `K7F3-9M2P-XQ4R@ws://host:8787` → `{ code: 'K7F39M2PXQ4R', relayUrl: 'ws://host:8787' }`

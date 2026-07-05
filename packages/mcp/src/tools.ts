@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { formatInvite, renderInbound } from '@magpie/protocol';
+import { formatInvite, loopbackInviteWarning, renderInbound } from '@magpie/protocol';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { SessionStore } from './session.js';
@@ -95,6 +95,7 @@ export function registerMagpieTools(server: McpServer, store: SessionStore): voi
         // start() succeeded, so an effective relay URL necessarily exists.
         const effectiveRelay = relayUrl ?? store.relayUrl!;
         const invite = formatInvite(code!, effectiveRelay);
+        const warning = loopbackInviteWarning(effectiveRelay);
         return ok(
           [
             `Call started. Pairing code:`,
@@ -105,6 +106,7 @@ export function registerMagpieTools(server: McpServer, store: SessionStore): voi
             ``,
             `    ${invite}`,
             ``,
+            ...(warning ? [warning, `TELL YOUR HUMAN about this before they share the invite.`, ``] : []),
             `The other person pastes the invite into sb_join; they need no relay configuration.`,
             `callId: ${callId}`,
           ].join('\n'),

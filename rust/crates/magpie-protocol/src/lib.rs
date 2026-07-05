@@ -14,7 +14,9 @@ pub mod schema;
 
 pub use constants::*;
 pub use error::{ProtocolError, Result};
-pub use invite::{format_invite, parse_invite, Invite};
+pub use invite::{
+    format_invite, is_loopback_relay_url, loopback_invite_warning, parse_invite, Invite,
+};
 pub use pairing::{
     channel_from_code, channel_key, frame_from_b64, frame_to_b64, generate_pairing_code,
     normalize_pairing_code, rendezvous_id, PairingChannel,
