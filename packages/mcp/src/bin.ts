@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createMagpieMcp } from './server.js';
+import { resolveDefaultRelay } from './relay-pointer.js';
 
 /**
  * Magpie MCP stdio entrypoint.
@@ -11,9 +12,12 @@ import { createMagpieMcp } from './server.js';
  *   MAGPIE_EXTENSION=@chris/impl \
  *   magpie-mcp
  *
- * - MAGPIE_RELAY_URL : WebSocket URL of the default relay. OPTIONAL — a joiner
- *   pasting a full invite (`CODE@ws://…`) needs no relay config at all;
- *   sb_start then requires an explicit relayUrl input.
+ * - MAGPIE_RELAY_URL : WebSocket URL of the default relay. OPTIONAL — when unset,
+ *   the hosted default relay is resolved from a stable pointer file (see
+ *   relay-pointer.ts). A joiner pasting a full invite (`CODE@ws://…`) needs no
+ *   relay config at all. Set it to pin a self-hosted relay.
+ * - MAGPIE_RELAY_POINTER : override the pointer URL, or set to '' to disable
+ *   the hosted default (invite-only). OPTIONAL.
  * - MAGPIE_EXTENSION  : this endpoint's address `@owner/role` (required).
  * - MAGPIE_ASK_TIMEOUT_MS : optional override for how long sb_ask waits.
  *
@@ -21,13 +25,18 @@ import { createMagpieMcp } from './server.js';
  * go to stderr only.
  */
 async function main(): Promise<void> {
-  const relayUrl = process.env.MAGPIE_RELAY_URL;
   const extension = process.env.MAGPIE_EXTENSION;
 
   if (!extension) {
     process.stderr.write('[magpie-mcp] MAGPIE_EXTENSION is required (e.g. @chris/impl)\n');
     process.exit(1);
   }
+
+  // Resolve the default relay: explicit env wins, else the hosted pointer file.
+  // Never throws — an unreachable pointer degrades to invite-only mode.
+  const relayUrl = await resolveDefaultRelay(process.env, {
+    warn: (m) => process.stderr.write(`[magpie-mcp] ${m}\n`),
+  });
 
   const askTimeoutRaw = process.env.MAGPIE_ASK_TIMEOUT_MS;
   const askTimeoutMs =
@@ -40,7 +49,7 @@ async function main(): Promise<void> {
   let mcp;
   try {
     mcp = createMagpieMcp({
-      ...(relayUrl !== undefined && relayUrl !== '' ? { relayUrl } : {}),
+      ...(relayUrl ? { relayUrl } : {}),
       extension, // validated inside createMagpieMcp; throws on bad shape
       ...(askTimeoutMs !== undefined ? { askTimeoutMs } : {}),
     });

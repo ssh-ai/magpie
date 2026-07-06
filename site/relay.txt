@@ -1,0 +1,13 @@
+# Magpie hosted default relay — pointer file.
+#
+# The Magpie MCP fetches this file at startup and uses the first ws://|wss://
+# line below as the default relay, UNLESS the user set MAGPIE_RELAY_URL.
+# Migrating the relay is a one-line edit here — no re-release, no client change.
+#
+# Lines starting with '#' are ignored. Until an active URL line is present,
+# agents run in invite-only mode (joiners paste a full CODE@ws://… invite).
+#
+# To activate, add the relay's public address on its own line, e.g.:
+# wss://magpie-relay.example.dev
+#
+# (no active relay configured yet)
