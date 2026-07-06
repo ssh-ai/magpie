@@ -1,0 +1,24 @@
+# Magpie public relay on Fly.io — wss://<app>.fly.dev, TLS at the Fly edge.
+#
+#   cd rust && fly launch --copy-config --name <app> --no-deploy && fly deploy
+#
+# The relay is stateless (in-memory rendezvous/call registry only) and brokers
+# end-to-end-encrypted ciphertext — one tiny always-on machine is plenty.
+
+app = "magpie-relay"
+primary_region = "nrt" # Tokyo
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  # Calls live on WebSocket connections: the machine must NOT scale to zero.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
