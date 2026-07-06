@@ -2,7 +2,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "scripts/install.*", ".github/workflows/pages.yml"]
+    paths: ["site/**", "scripts/install.*", "deploy/relay/setup.sh", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -23,7 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # short install URLs: serve the installers from Pages
-      - run: cp scripts/install.sh scripts/install.ps1 site/
+      - run: |
+          cp scripts/install.sh scripts/install.ps1 site/
+          cp deploy/relay/setup.sh site/deploy-relay.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
