@@ -83,6 +83,19 @@ fn parse_message_accepts_valid_and_rejects_malformed() {
     // Bad callId.
     let bad_call = good.replace("call-abcdef1234", "call-short");
     assert!(parse_message(&bad_call).is_err());
+
+    // Unknown field → rejected (zod `.strict()` parity).
+    let extra = good.replace("\"turn\": 0,", "\"turn\": 0, \"evil\": true,");
+    assert!(parse_message(&extra).is_err());
+
+    // Bad ts (zod `.datetime()` parity: ISO-8601 UTC, Z-suffixed).
+    for bad in ["not-a-date", "2026-06-29 00:00:00Z", "2026-06-29T00:00:00.000+09:00", "2026-13-29T00:00:00Z"] {
+        let bad_ts = good.replace("2026-06-29T00:00:00.000Z", bad);
+        assert!(parse_message(&bad_ts).is_err(), "ts {bad} must be rejected");
+    }
+    // Fractional and whole-second forms both pass.
+    let no_frac = good.replace("2026-06-29T00:00:00.000Z", "2026-06-29T00:00:00Z");
+    assert!(parse_message(&no_frac).is_ok());
 }
 
 #[test]

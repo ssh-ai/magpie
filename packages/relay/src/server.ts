@@ -242,7 +242,9 @@ export class RelayServer {
 export function startRelay(port = 0, opts: RelayOptions = {}): Promise<RelayHandle> {
   return new Promise((resolve, reject) => {
     const host = opts.host ?? '0.0.0.0';
-    const wss = new WebSocketServer({ port, host });
+    // 2 MiB bounds every legal control frame (MAX_SEALED_FRAME + envelope);
+    // the ws default (100 MiB) lets one client force huge buffer allocations.
+    const wss = new WebSocketServer({ port, host, maxPayload: 2 * 1024 * 1024 });
     const relay = new RelayServer(wss, opts);
 
     const onError = (err: Error) => {

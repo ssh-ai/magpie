@@ -107,8 +107,48 @@ pub enum CallOutcome {
     Disconnected,
 }
 
-/// The canonical wire message. Mirrors the zod `Message` shape.
+/// True iff `s` is an ISO-8601 UTC datetime of the shape zod's `.datetime()`
+/// accepts: `YYYY-MM-DDTHH:MM:SS[.fff...]Z` (Z-suffixed, no offsets).
+fn is_iso_datetime(s: &str) -> bool {
+    let b = s.as_bytes();
+    // Fixed prefix: YYYY-MM-DDTHH:MM:SS = 19 bytes; suffix `Z` = 1.
+    if b.len() < 20 || *b.last().unwrap() != b'Z' {
+        return false;
+    }
+    let digits = |r: std::ops::Range<usize>| b[r].iter().all(u8::is_ascii_digit);
+    let num = |r: std::ops::Range<usize>| -> u32 {
+        s[r].parse().unwrap_or(u32::MAX)
+    };
+    let shape = digits(0..4)
+        && b[4] == b'-'
+        && digits(5..7)
+        && b[7] == b'-'
+        && digits(8..10)
+        && b[10] == b'T'
+        && digits(11..13)
+        && b[13] == b':'
+        && digits(14..16)
+        && b[16] == b':'
+        && digits(17..19);
+    if !shape {
+        return false;
+    }
+    // Optional fractional seconds between seconds and the trailing Z.
+    let frac = &b[19..b.len() - 1];
+    if !frac.is_empty() && (frac[0] != b'.' || frac.len() < 2 || !digits(20..b.len() - 1)) {
+        return false;
+    }
+    (1..=12).contains(&num(5..7))
+        && (1..=31).contains(&num(8..10))
+        && num(11..13) <= 23
+        && num(14..16) <= 59
+        && num(17..19) <= 59
+}
+
+/// The canonical wire message. Mirrors the zod `Message` shape, including its
+/// `.strict()` unknown-field rejection.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Message {
     pub v: u8,
     pub id: String,
@@ -155,6 +195,12 @@ impl Message {
             return Err(ProtocolError::Validation(format!(
                 "invalid to extension: {}",
                 self.to
+            )));
+        }
+        if !is_iso_datetime(&self.ts) {
+            return Err(ProtocolError::Validation(format!(
+                "invalid ts (expected ISO-8601 UTC): {}",
+                self.ts
             )));
         }
         if let Some(ref r) = self.in_reply_to {

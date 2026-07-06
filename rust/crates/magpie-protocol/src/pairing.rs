@@ -100,9 +100,10 @@ impl PairingChannel {
         self.seal_with_iv(&iv, plaintext)
     }
 
-    /// Seal with a caller-supplied IV (used by the cross-impl ENCRYPT vector).
-    /// AES-256-GCM, no AAD, DETACHED tag → exact `iv ‖ tag ‖ ct` layout.
-    pub fn seal_with_iv(&self, iv: &[u8; IV_LEN], plaintext: &[u8]) -> Vec<u8> {
+    /// Seal with a caller-supplied IV. PRIVATE: a fixed IV under a fixed key is
+    /// an AES-GCM nonce-reuse footgun; only `seal` (random IV) and the in-crate
+    /// cross-impl ENCRYPT vector test may call this.
+    fn seal_with_iv(&self, iv: &[u8; IV_LEN], plaintext: &[u8]) -> Vec<u8> {
         let nonce = Nonce::from_slice(iv);
         let mut buf = plaintext.to_vec();
         let tag = self
@@ -175,4 +176,49 @@ pub fn generate_pairing_code() -> String {
         .map(|c| c.iter().collect::<String>())
         .collect::<Vec<_>>()
         .join("-")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cross-impl ENCRYPT vector: sealing the fixture plaintext with the
+    /// fixture's FIXED iv must reproduce the TS-sealed bytes exactly. Lives
+    /// here (not in `tests/`) because `seal_with_iv` is deliberately private.
+    #[test]
+    fn encrypt_vector_reproduces_ts_sealed_bytes() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../specs/fixtures/crypto-vectors.json"
+        );
+        let raw = std::fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("read fixture {path}: {e}"));
+        let fx: serde_json::Value = serde_json::from_str(&raw).expect("fixture is valid JSON");
+        let enc = &fx["encrypt"];
+
+        let iv_vec = hex::decode(enc["ivHex"].as_str().unwrap()).unwrap();
+        let iv: [u8; IV_LEN] = iv_vec.as_slice().try_into().expect("12-byte iv");
+        let plaintext = enc["plaintextUtf8"].as_str().unwrap();
+
+        let channel = channel_from_code(enc["code"].as_str().unwrap()).unwrap();
+        let frame = channel.seal_with_iv(&iv, plaintext.as_bytes());
+
+        assert_eq!(&frame[0..IV_LEN], iv.as_slice(), "iv prefix");
+        assert_eq!(
+            hex::encode(&frame[IV_LEN..IV_LEN + TAG_LEN]),
+            enc["tagHex"].as_str().unwrap(),
+            "detached tag mismatch"
+        );
+        assert_eq!(
+            hex::encode(&frame[IV_LEN + TAG_LEN..]),
+            enc["ciphertextHex"].as_str().unwrap(),
+            "ciphertext mismatch"
+        );
+        assert_eq!(
+            frame_to_b64(&frame),
+            enc["sealedB64"].as_str().unwrap(),
+            "sealedB64 not byte-identical to TS"
+        );
+        assert_eq!(channel.open(&frame).unwrap(), plaintext.as_bytes());
+    }
 }

@@ -13,6 +13,11 @@ pub const MAX_SEALED_FRAME: usize = 1_500_000;
 pub const MAX_TOPIC: usize = 2000;
 pub const MAX_REASON: usize = 500;
 
+/// WebSocket message/frame size cap. The largest legal control frame is a
+/// `send` carrying a MAX_SEALED_FRAME payload plus envelope overhead, so 2 MiB
+/// bounds every honest frame while killing the tungstenite 64 MiB default.
+pub const MAX_WS_MSG: usize = 2 * 1024 * 1024;
+
 /// Client -> Relay control frames (discriminated on `t`).
 #[derive(Debug, Deserialize)]
 #[serde(tag = "t")]
@@ -35,6 +40,28 @@ pub enum ClientFrame {
         #[serde(default)]
         reason: Option<String>,
     },
+}
+
+/// Parse a client frame STRICTLY: unknown fields are rejected, mirroring the
+/// zod `.strict()` schemas in the TS relay (`wire.ts`). Serde cannot express
+/// `deny_unknown_fields` on an internally-tagged enum, so key allowlists are
+/// checked on the raw JSON object before deserializing.
+pub fn parse_client_frame(text: &str) -> Result<ClientFrame, &'static str> {
+    let value: serde_json::Value =
+        serde_json::from_str(text).map_err(|_| "control frame is not valid JSON")?;
+    let obj = value.as_object().ok_or("control frame is not a JSON object")?;
+    let t = obj.get("t").and_then(|v| v.as_str()).ok_or("missing frame tag `t`")?;
+    let allowed: &[&str] = match t {
+        "open" => &["t", "rendezvousId", "from", "topic", "maxTurns"],
+        "join" => &["t", "rendezvousId", "from"],
+        "send" => &["t", "callId", "frame"],
+        "hangup" => &["t", "callId", "reason"],
+        _ => return Err("unknown frame tag"),
+    };
+    if obj.keys().any(|k| !allowed.contains(&k.as_str())) {
+        return Err("unexpected field in control frame");
+    }
+    serde_json::from_value(value).map_err(|_| "malformed control frame")
 }
 
 /// Relay -> Client control frames.
@@ -177,6 +204,21 @@ mod tests {
             }
             _ => panic!("wrong variant"),
         }
+    }
+
+    #[test]
+    fn strict_parse_rejects_unknown_fields_matching_zod_strict() {
+        // Baseline: a clean frame parses.
+        assert!(parse_client_frame(r#"{"t":"join","rendezvousId":"x","from":"@a/b"}"#).is_ok());
+        // Unknown field → rejected (zod `.strict()` parity).
+        assert!(parse_client_frame(r#"{"t":"join","rendezvousId":"x","from":"@a/b","evil":1}"#)
+            .is_err());
+        assert!(parse_client_frame(r#"{"t":"send","callId":"c","frame":"AAAA","x":true}"#)
+            .is_err());
+        // Unknown tag, non-object, garbage → rejected.
+        assert!(parse_client_frame(r#"{"t":"admin"}"#).is_err());
+        assert!(parse_client_frame(r#"[1,2]"#).is_err());
+        assert!(parse_client_frame("nope").is_err());
     }
 
     #[test]

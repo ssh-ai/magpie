@@ -13,6 +13,14 @@ pub const ABSOLUTE_MAX_TURNS: u32 = 50;
 pub const PAIRING_TTL: Duration = Duration::from_secs(10 * 60); // 10 minutes
 pub const CALL_IDLE_TTL: Duration = Duration::from_secs(60 * 60); // 1 hour
 
+// Abuse caps: a pending entry / live call costs relay memory for its TTL, so
+// bound what one connection (and the whole relay) can allocate. Honest use is
+// a handful of concurrent calls per agent; these are far above that.
+pub const MAX_PENDING_PER_ENDPOINT: usize = 8;
+pub const MAX_CALLS_PER_ENDPOINT: usize = 32;
+pub const MAX_PENDING_TOTAL: usize = 10_000;
+pub const MAX_CALLS_TOTAL: usize = 10_000;
+
 /// An endpoint handle (one WebSocket connection).
 pub type Endpoint = u64;
 
@@ -60,6 +68,7 @@ pub enum RegError {
     NotParticipant,
     CallClosed,
     PeerGone,
+    Capacity,
 }
 
 impl RegError {
@@ -73,6 +82,7 @@ impl RegError {
             RegError::NotParticipant => "NOT_PARTICIPANT",
             RegError::CallClosed => "CALL_CLOSED",
             RegError::PeerGone => "PEER_GONE",
+            RegError::Capacity => "CAPACITY",
         }
     }
     pub fn message(self) -> &'static str {
@@ -85,6 +95,7 @@ impl RegError {
             RegError::NotParticipant => "sender is not a participant in this call",
             RegError::CallClosed => "call is closed",
             RegError::PeerGone => "the other endpoint is no longer connected",
+            RegError::Capacity => "relay is at capacity for this operation; try again later",
         }
     }
 }
@@ -124,6 +135,12 @@ impl CallRegistry {
         if self.pending.contains_key(&rendezvous_id) {
             return Err(RegError::AlreadyPaired);
         }
+        if self.pending.len() >= MAX_PENDING_TOTAL
+            || self.pending.values().filter(|p| p.opener == opener).count()
+                >= MAX_PENDING_PER_ENDPOINT
+        {
+            return Err(RegError::Capacity);
+        }
         let call_id = new_call_id();
         self.pending.insert(
             rendezvous_id,
@@ -144,6 +161,16 @@ impl CallRegistry {
         if pending.created_at.elapsed() > self.pairing_ttl {
             self.pending.remove(&rendezvous_id);
             return Err(RegError::Expired);
+        }
+        if self.calls.len() >= MAX_CALLS_TOTAL
+            || self
+                .calls
+                .values()
+                .filter(|c| c.endpoints.contains(&joiner))
+                .count()
+                >= MAX_CALLS_PER_ENDPOINT
+        {
+            return Err(RegError::Capacity);
         }
         // Single-use: consume the rendezvous so no third party can join.
         let pending = self.pending.remove(&rendezvous_id).unwrap();
@@ -316,6 +343,36 @@ mod tests {
         assert_eq!(closed.len(), 1);
         assert_eq!(closed[0].call_id, call.call_id);
         assert_eq!(r.call_count(), 0);
+    }
+
+    #[test]
+    fn open_caps_pendings_per_endpoint() {
+        let mut r = reg();
+        for i in 0..MAX_PENDING_PER_ENDPOINT {
+            r.open(format!("{i:032x}"), "@a/x".into(), "t".into(), 12, 1).unwrap();
+        }
+        let err = r
+            .open(format!("{:032x}", MAX_PENDING_PER_ENDPOINT), "@a/x".into(), "t".into(), 12, 1)
+            .unwrap_err();
+        assert_eq!(err, RegError::Capacity);
+        // A different endpoint is unaffected by endpoint 1's cap.
+        r.open("f".repeat(32), "@b/y".into(), "t".into(), 12, 2).unwrap();
+    }
+
+    #[test]
+    fn join_caps_calls_per_endpoint() {
+        let mut r = reg();
+        for i in 0..=MAX_CALLS_PER_ENDPOINT {
+            r.open(format!("{i:032x}"), "@a/x".into(), "t".into(), 12, (i + 10) as Endpoint)
+                .unwrap();
+        }
+        for i in 0..MAX_CALLS_PER_ENDPOINT {
+            r.join(format!("{i:032x}"), "@b/y".into(), 2).unwrap();
+        }
+        let err = r
+            .join(format!("{:032x}", MAX_CALLS_PER_ENDPOINT), "@b/y".into(), 2)
+            .unwrap_err();
+        assert_eq!(err, RegError::Capacity);
     }
 
     #[test]

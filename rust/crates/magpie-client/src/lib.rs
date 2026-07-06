@@ -32,7 +32,7 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use magpie_protocol::{
     channel_from_code, frame_from_b64, frame_to_b64, generate_pairing_code, new_message_id,
@@ -220,7 +220,14 @@ pub struct MagpieClient {
 impl MagpieClient {
     /// Open a WebSocket to the relay and resolve once it is ready.
     pub async fn connect(relay_url: &str) -> Result<MagpieClient> {
-        let (ws, _resp) = connect_async(relay_url)
+        // Cap inbound message/frame size (tungstenite defaults to 64 MiB) —
+        // 2 MiB bounds every legal relay frame, same cap as the relay side.
+        let config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
+            max_message_size: Some(2 * 1024 * 1024),
+            max_frame_size: Some(2 * 1024 * 1024),
+            ..Default::default()
+        };
+        let (ws, _resp) = tokio_tungstenite::connect_async_with_config(relay_url, Some(config), false)
             .await
             .map_err(|e| ClientError::Ws(e.to_string()))?;
         let (write, read) = ws.split();

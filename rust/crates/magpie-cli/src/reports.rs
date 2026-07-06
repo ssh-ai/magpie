@@ -68,6 +68,11 @@ pub(crate) fn list_reports_in(dir: &Path) -> Vec<CallReport> {
 }
 
 pub(crate) fn read_report_in(dir: &Path, call_id: &str) -> Option<CallReport> {
+    // A callId is user input here (`magpie report <id>`): validate its shape
+    // before building a path with it, or `../` walks out of the calls dir.
+    if !magpie_protocol::is_valid_call_id(call_id) {
+        return None;
+    }
     let path = dir.join(format!("{call_id}.json"));
     let s = std::fs::read_to_string(path).ok()?;
     serde_json::from_str(&s).ok()
@@ -243,5 +248,20 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let missing = dir.path().join("does-not-exist");
         assert!(list_reports_in(&missing).is_empty());
+    }
+
+    #[test]
+    fn read_rejects_path_traversal_call_ids() {
+        let dir = tempfile::tempdir().unwrap();
+        // Plant a decoy OUTSIDE the calls dir that a traversal would reach.
+        let outside = dir.path().join("secret.json");
+        let decoy = report(CallOutcome::Resolved, Some("secret"), "2026-06-29T01:00:00.000Z");
+        std::fs::write(&outside, serde_json::to_string(&decoy).unwrap()).unwrap();
+        let calls = dir.path().join("calls");
+        std::fs::create_dir_all(&calls).unwrap();
+
+        assert!(read_report_in(&calls, "../secret").is_none(), "traversal blocked");
+        assert!(read_report_in(&calls, "/etc/passwd").is_none());
+        assert!(read_report_in(&calls, "call-../../x-aaaa").is_none());
     }
 }

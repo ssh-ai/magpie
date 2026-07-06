@@ -47,34 +47,28 @@ fn rendezvous_and_channel_key_match_ts() {
     }
 }
 
+/// The byte-exact SEAL side of the ENCRYPT vector (fixed-IV) lives as a unit
+/// test in `src/pairing.rs` — `seal_with_iv` is private (nonce-reuse footgun).
+/// From the outside, verify the same vector via the open() direction plus a
+/// random-IV round trip.
 #[test]
-fn encrypt_vector_reproduces_sealed_bytes() {
+fn encrypt_vector_opens_and_round_trips() {
     let fx = load_fixture();
     let enc = &fx["encrypt"];
     let code = enc["code"].as_str().unwrap();
     let plaintext = enc["plaintextUtf8"].as_str().unwrap();
-    let iv_hex = enc["ivHex"].as_str().unwrap();
-    let tag_hex = enc["tagHex"].as_str().unwrap();
-    let ct_hex = enc["ciphertextHex"].as_str().unwrap();
     let want_sealed_b64 = enc["sealedB64"].as_str().unwrap();
 
-    let iv_vec = hex::decode(iv_hex).unwrap();
-    let iv: [u8; 12] = iv_vec.as_slice().try_into().expect("12-byte iv");
-
     let channel = channel_from_code(code).unwrap();
-    let frame = channel.seal_with_iv(&iv, plaintext.as_bytes());
 
-    // Layout: iv(12) ‖ tag(16) ‖ ct.
-    assert_eq!(&frame[0..12], iv.as_slice(), "iv prefix");
-    assert_eq!(hex::encode(&frame[12..28]), tag_hex, "detached tag mismatch");
-    assert_eq!(hex::encode(&frame[28..]), ct_hex, "ciphertext mismatch");
+    // Opening the fixture's exact sealed bytes recovers the plaintext.
+    let frame = frame_from_b64(want_sealed_b64).unwrap();
+    assert_eq!(channel.open(&frame).unwrap(), plaintext.as_bytes());
 
-    let got_b64 = frame_to_b64(&frame);
-    assert_eq!(got_b64, want_sealed_b64, "sealedB64 not byte-identical to TS");
-
-    // And the frame round-trips through open().
-    let recovered = channel.open(&frame).unwrap();
-    assert_eq!(recovered, plaintext.as_bytes());
+    // And a fresh (random-IV) seal round-trips through the same channel.
+    let resealed = channel.seal(plaintext.as_bytes());
+    assert_eq!(channel.open(&resealed).unwrap(), plaintext.as_bytes());
+    assert!(!frame_to_b64(&resealed).is_empty());
 }
 
 #[test]

@@ -135,29 +135,36 @@ than Node (3.6 ms vs 66 ms). Test plan: `specs/TEST_PLAN.md`. Crypto corpus:
       (rmcp MCP) deferred unless the split proves insufficient.
 
 ### Rust hardening follow-ups (from adversarial review — before any PUBLIC relay)
-The migration is correct + tested; these are the relay's existing DoS/parity gaps
-(most shared with the TS relay) surfaced by the review. The relay is the one
-internet-exposed component → fold into "P2 relay hardening" below before exposure.
-- [ ] **HIGH** relay: cap pending opens per connection — unbounded `pending` map
-      lets one peer OOM the relay within the 10-min TTL (`registry.rs` `open`).
-- [ ] **HIGH** relay: bounded outbound channel — `unbounded_channel` per conn lets
-      a non-reading peer buffer unbounded `deliver`/`hangup` (`main.rs:96`).
-- [ ] **MED** relay+client: WS `max_message_size`/`max_frame_size` cap (~2 MB) via
-      `accept_async_with_config`/`connect_async_with_config` (tungstenite default 64 MiB);
-      also parse/validate BEFORE taking the global lock.
-- [ ] **MED** relay+client: survive `Mutex` poisoning (`lock().unwrap_or_else(into_inner)`
-      or `parking_lot`) + add handshake/idle timeouts + connection cap (slow-loris).
-- [ ] **MED** parity: add `#[serde(deny_unknown_fields)]` to Rust `ClientFrame`
-      (relay) + `Message` (protocol) to match zod `.strict()` (resolves the open
-      §10 decision → **apply**); validate `ts` as ISO-8601 in protocol.
-- [ ] **MED** protocol: make `seal_with_iv` non-public (test-only) — caller-supplied
-      IV under a fixed key is an AES-GCM nonce-reuse footgun.
-- [ ] **LOW** cli: `report <id>` path-traversal — validate `callId` regex before
-      `dir.join`. + SIGINT `.expect` → graceful. + CLI piped-stdin clean exit
-      (`std::process::exit` after finish, or `shutdown_timeout`).
+**✅ DONE 2026-07-07 (all relay-blocking items; verified by live abuse sim:
+8 opens → CAPACITY, 100-frame flood → RATE_LIMITED, unknown field → BAD_FRAME):**
+- [x] **HIGH** relay: pending/call caps — per-endpoint (8 pending / 32 calls) +
+      global (10k each) → `CAPACITY` error (`registry.rs`).
+- [x] **HIGH** relay: bounded outbound queue (256/conn, `try_send`) — a
+      non-reading peer is EVICTED (writer closes the socket) instead of
+      buffering unbounded.
+- [x] **MED** relay+client: WS `max_message_size`/`max_frame_size` = 2 MiB
+      (was tungstenite's 64 MiB default); TS relay `maxPayload` 2 MiB too
+      (was ws's 100 MiB); JSON parse now happens BEFORE the global lock.
+- [x] **MED** relay: poison-tolerant lock + 10 s handshake timeout + conn caps
+      (4096 global / 64 per IP, reserved pre-handshake) + per-conn rate limit
+      (30/s, burst 60 → `RATE_LIMITED`). Read-idle timeout deliberately NOT
+      added: quiet listeners waiting for `deliver` are legitimate; caps bound
+      the FD cost instead.
+- [x] **MED** parity: strict unknown-field rejection on relay `ClientFrame`
+      (key allowlist; serde can't deny-unknown on tagged enums) + `Message`
+      `deny_unknown_fields` + `ts` ISO-8601 (Z-suffixed) validation.
+- [x] **MED** protocol: `seal_with_iv` now private (ENCRYPT vector moved to an
+      in-crate unit test).
+- [x] **LOW** cli: `report <id>` path-traversal blocked (callId validated
+      before `dir.join`).
+
+Still open (not relay-blocking):
+- [ ] **LOW** cli: SIGINT `.expect` → graceful; piped-stdin clean exit.
 - [ ] **LOW** cross-impl (shared w/ TS): forgeable untrusted-content fence (use a
       per-message random nonce delimiter); pairing-code modulo bias (rejection
       sampling); UTF-16-vs-byte length caps; `maxTurns:0` clamp-vs-reject.
+- [ ] TS relay: mirror pending/call caps + rate limit (dev/reference only —
+      the hosted public relay is the Rust binary).
 
 ## P1 — Onboarding / OSS launch (self-host model, decided 2026-07-01)
 
@@ -210,7 +217,8 @@ a pairing code.
       decryption (currently a TODO stub, no fake decrypt).
 
 ## P2 — Security / ops hardening (before any public exposure)
-- [ ] Relay **rate-limit + connection caps + access token**.
+- [~] Relay **rate-limit + connection caps** ✅ (2026-07-07, see hardening list
+      above) + access token (still open; may be unnecessary for a public relay).
 - [ ] **wss/TLS** deployment (Caddy auto-TLS) guide + make it the default for
       non-local relays (hides rendezvousId; see PROTOCOL.md §6a).
 - [ ] **SPAKE2 PAKE** so short codes stay MITM-safe (currently HKDF-from-code).
