@@ -7,7 +7,5 @@
 # Lines starting with '#' are ignored. Until an active URL line is present,
 # agents run in invite-only mode (joiners paste a full CODE@ws://… invite).
 #
-# To activate, add the relay's public address on its own line, e.g.:
-# wss://magpie-relay.example.dev
-#
-# (no active relay configured yet)
+# Current hosted default (Fly.io, nrt/Tokyo, DoS-hardened relay):
+wss://magpie-relay.fly.dev
