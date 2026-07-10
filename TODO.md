@@ -210,6 +210,21 @@ a pairing code.
 - [ ] Optional **receptionist agent** (`@b/desk`) for content-based dispatch to the
       right local agent.
 
+## P1 — Binary trust / AV false positives (self-host distribution)
+Finding (2026-07-10): on a dev Mac running Kaspersky + AhnLab ASTx, a
+LOCALLY-BUILT `magpie-relay` was quarantined after being run repeatedly as a
+live listening relay (behavioral proxy/backdoor heuristic — unsigned binary
+that opens a port and relays). Empirically: the v0.1.0 RELEASE binaries
+(magpie, magpie-mcp, magpie-relay) ALL survived on disk on the same machine,
+and the CLI (outbound client) survived even when run. So:
+- Hosted-relay users are UNAFFECTED — they connect to wss://…fly.dev (a remote
+  service on Linux), never download/run the relay binary.
+- Only self-hosters running the relay locally can hit the false positive.
+- [ ] **macOS notarization + Windows Authenticode signing** of release binaries
+      (Apple Developer $99/yr) — removes Gatekeeper friction AND lowers AV
+      false-positive rate for self-hosters. Do before promoting self-host relay.
+- [ ] Self-host docs: note the AV false-positive possibility + how to allowlist.
+
 ## P2 — Reach (cover app-only users)
 - [ ] **Remote HTTP/SSE MCP server** (Claude app / ChatGPT) + **BYO-key auth**
       (never users' subscription OAuth — see COMPLIANCE.md).
