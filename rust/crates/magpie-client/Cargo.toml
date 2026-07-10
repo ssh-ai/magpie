@@ -8,7 +8,9 @@ description = "Magpie client — a thin async WebSocket client to the relay plus
 [dependencies]
 magpie-protocol = { path = "../magpie-protocol" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-tokio-tungstenite = "0.21"
+# rustls so `wss://` relays (the hosted default is TLS-terminated) work; the
+# webpki roots keep the binary independent of the OS cert store.
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
 futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
