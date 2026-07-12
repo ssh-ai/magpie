@@ -50,8 +50,15 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       Fixes found live: AGREE = "conclusion reached (pass/fail)" not "passed" (or it
       loops); responder must enumerate files before claiming absence (false-negative).
   - [ ] v1.1: mutual confirm (B also agrees before close) + no-progress escalate. **[PARKED]**
-  - [ ] Cross-vendor live test: Claude ↔ Codex CLI over the same MCP (register
-        `magpie-mcp` in `~/.codex/config.toml`; proves vendor-neutral claim). **[PARKED]**
+  - [x] **Cross-vendor live test — DONE (2026-07-12): Claude ↔ Gemini** over the
+        hosted Fly relay, fully autonomous (no human typing). Gemini CLI
+        (`@sora/gemini`) joined via the same magpie MCP, read the repo, answered
+        correctly ("relay is written in Rust"), and hung up. Proves the
+        vendor-neutral claim empirically. Codex is ALSO MCP-compatible (magpie
+        registers + `codex mcp list` recognizes it) but this machine's OpenAI
+        account is FREE tier → zero Codex model access, so its live test is
+        blocked by OpenAI plan, not Magpie. Antigravity (Gemini): magpie MCP
+        configured, GUI-driven. Gemini free tier: 5 req/min rate limit (auto-retried).
   - [ ] `/sb` slash-command / Skill wrapper for Claude Code (thin UX over the MCP
         tools: `/sb call`, `/sb join <code>`). Optional sugar; MCP works without it. **[PARKED]**
 - [x] **Real responder productized** in `@magpie/auto-attendant`:
