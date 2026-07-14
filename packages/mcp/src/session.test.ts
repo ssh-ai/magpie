@@ -359,10 +359,9 @@ describe('SessionStore.start and the relay default / override', () => {
   });
 });
 
-describe('CallSession refuses to send before a peer joins or after close', () => {
-  it('throws on ask with no peer', async () => {
-    const { client } = fakeClient();
-    const session = new CallSession({
+describe('CallSession.ask waits for the peer to join (no poll loop needed)', () => {
+  function noPeerSession(client: MagpieClient): CallSession {
+    return new CallSession({
       client,
       callId: CALL_ID,
       self: SELF,
@@ -370,7 +369,41 @@ describe('CallSession refuses to send before a peer joins or after close', () =>
       topic: 't',
       code: 'K7F3-9M2P-XQ4R',
     });
-    await expect(session.ask('hi')).rejects.toThrow(/no peer yet/);
+  }
+
+  it('parks the ask until the peer joins, then sends and resolves', async () => {
+    const { client, sent } = fakeClient();
+    const session = noPeerSession(client);
+
+    const pending = session.ask('what is 2+2?');
+    // Nothing on the wire yet — we are waiting for the peer to join.
+    expect(sent).toHaveLength(0);
+
+    // Peer joins → the parked ask sends its query.
+    session.notePeerJoined(PEER);
+    await Promise.resolve(); // let the awaited send flush
+    expect(sent).toHaveLength(1);
+    const query = sent[0]!;
+    expect(query.to).toBe(PEER);
+
+    session.ingest(peerMsg({ type: 'response', inReplyTo: query.id, content: '4' }));
+    expect((await pending).content).toBe('4');
+  });
+
+  it('times out with a clear message if no peer joins in the wait window', async () => {
+    const { client, sent } = fakeClient();
+    const session = noPeerSession(client);
+    // Tiny peerWait so the test is fast.
+    await expect(session.ask('hi', undefined, 20)).rejects.toThrow(/no peer has joined/i);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('rejects a parked ask if the call closes while waiting for the peer', async () => {
+    const { client } = fakeClient();
+    const session = noPeerSession(client);
+    const pending = session.ask('hi');
+    session.markClosed('peer disconnected');
+    await expect(pending).rejects.toThrow(/closed/);
   });
 
   it('throws on ask after the call is closed', async () => {

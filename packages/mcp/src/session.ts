@@ -48,8 +48,22 @@ export interface SessionInfo {
   closedReason: string | null;
 }
 
-/** How long `sb_ask` waits for the peer's answer before giving up. */
-const DEFAULT_ASK_TIMEOUT_MS = 5 * 60 * 1000;
+/**
+ * How long `sb_ask` waits for the peer's answer before giving up. This is a
+ * GENEROUS BACKSTOP, not a guess at turn duration: a peer that DISCONNECTS
+ * fails the ask immediately (via `markClosed`), so this only bounds a peer that
+ * is still connected but silent. A thorough answerer (read files + reason) can
+ * legitimately take several minutes per turn, so a short timeout would cut off
+ * live conversations. 15 min covers slow turns while still bounding a wedged peer.
+ */
+const DEFAULT_ASK_TIMEOUT_MS = 15 * 60 * 1000;
+
+/**
+ * How long `sb_ask` will wait for the peer to JOIN before sending, when asked
+ * on a call nobody has joined yet. Matches the pairing-code TTL horizon: the
+ * human shares the invite out-of-band and the peer joins whenever they can.
+ */
+const DEFAULT_PEER_WAIT_MS = 10 * 60 * 1000;
 
 /** Actionable hint when no relay URL is available for an operation. */
 const NO_RELAY_HINT =
@@ -79,6 +93,9 @@ export class CallSession {
 
   /** Outstanding `sb_ask` calls keyed by the query message id we are awaiting a reply to. */
   readonly #awaiting = new Map<string, AwaitedReply>();
+
+  /** Resolvers for callers parked in `#waitForPeer` until the peer joins. */
+  readonly #peerWaiters = new Set<{ resolve: () => void; reject: (e: Error) => void }>();
 
   readonly #client: MagpieClient;
   readonly #askTimeoutMs: number;
@@ -127,6 +144,54 @@ export class CallSession {
     };
   }
 
+  /**
+   * The peer joined this call. Records their extension and wakes anyone parked
+   * in `ask()` waiting to send their first question. Idempotent.
+   */
+  notePeerJoined(peer: Extension): void {
+    this.peer = peer;
+    for (const w of this.#peerWaiters) w.resolve();
+    this.#peerWaiters.clear();
+  }
+
+  /**
+   * Resolve once the peer has joined; reject if the call closes first or the
+   * wait exceeds `timeoutMs`. Resolves immediately if the peer is already here.
+   */
+  #waitForPeer(timeoutMs: number): Promise<void> {
+    if (this.peer) return Promise.resolve();
+    if (this.#closed) {
+      return Promise.reject(new Error(`call ${this.callId} closed: ${this.#closedReason}`));
+    }
+    return new Promise<void>((resolve, reject) => {
+      const waiter = {
+        resolve: () => {
+          clearTimeout(timer);
+          this.#peerWaiters.delete(waiter);
+          resolve();
+        },
+        reject: (e: Error) => {
+          clearTimeout(timer);
+          this.#peerWaiters.delete(waiter);
+          reject(e);
+        },
+      };
+      const timer = setTimeout(
+        () =>
+          waiter.reject(
+            new Error(
+              `no peer has joined call ${this.callId} yet (waited ${Math.round(
+                timeoutMs / 60000,
+              )} min). Share the invite and have them sb_join first.`,
+            ),
+          ),
+        timeoutMs,
+      );
+      if (typeof timer === 'object' && 'unref' in timer) timer.unref();
+      this.#peerWaiters.add(waiter);
+    });
+  }
+
   /** Route a decrypted inbound message belonging to this call. */
   ingest(msg: Message): void {
     // A reply to one of our outstanding asks?
@@ -166,6 +231,8 @@ export class CallSession {
       w.reject(err);
     }
     this.#awaiting.clear();
+    for (const w of this.#peerWaiters) w.reject(err);
+    this.#peerWaiters.clear();
     if (this.#waitingListener) {
       // Unpark with a synthetic hangup marker so sb_listen returns instead of hanging.
       const listener = this.#waitingListener;
@@ -177,8 +244,20 @@ export class CallSession {
   /**
    * Send a `query` to the peer and resolve with their matching `response`.
    * Used by `sb_ask`. Rejects on timeout, hangup, or send failure.
+   *
+   * If nobody has joined the call yet, this WAITS for the peer to join (up to
+   * `peerWaitMs`) instead of failing — so "start a call and ask X" just works
+   * without the caller inventing a poll loop. `replyTimeoutMs` overrides how
+   * long to wait for the answer once sent.
    */
-  async ask(question: string): Promise<Message> {
+  async ask(question: string, replyTimeoutMs?: number, peerWaitMs?: number): Promise<Message> {
+    this.#assertNotClosed();
+    // Ask-before-join: if nobody has joined yet, block until the peer arrives
+    // rather than erroring. When a peer is already present (the common case)
+    // this is skipped so the query is put on the wire synchronously.
+    if (!this.peer) {
+      await this.#waitForPeer(peerWaitMs ?? DEFAULT_PEER_WAIT_MS);
+    }
     this.#assertOpen();
     const id = newMessageId();
     const query = this.#build(id, 'query', question, null);
@@ -187,7 +266,7 @@ export class CallSession {
       const timer = setTimeout(() => {
         this.#awaiting.delete(id);
         reject(new Error(`timed out waiting for peer reply to ${id}`));
-      }, this.#askTimeoutMs);
+      }, replyTimeoutMs ?? this.#askTimeoutMs);
       // Don't keep the event loop alive solely for this timer.
       if (typeof timer === 'object' && 'unref' in timer) timer.unref();
       this.#awaiting.set(id, { resolve, reject, timer });
@@ -296,12 +375,16 @@ export class CallSession {
 
   // ---- internals -----------------------------------------------------------
 
-  #assertOpen(): void {
+  #assertNotClosed(): void {
     if (this.#closed) {
       throw new Error(
         `call ${this.callId} is closed${this.#closedReason ? ` (${this.#closedReason})` : ''}`,
       );
     }
+  }
+
+  #assertOpen(): void {
+    this.#assertNotClosed();
     if (!this.peer) {
       throw new Error(
         `call ${this.callId} has no peer yet; the other party must sb_join with the code first`,
@@ -426,10 +509,11 @@ export class SessionStore {
         }
       });
       client.onPeerJoined((callId, peer) => {
-        // The opener learns who joined; record it so sb_ask/sb_answer can
-        // address outbound messages even before the peer sends anything.
+        // The opener learns who joined; record it (so sb_ask/sb_answer can
+        // address outbound messages) AND wake any sb_ask parked waiting to send
+        // its first question before the peer arrived.
         const session = this.#sessions.get(callId);
-        if (session) session.peer = peer;
+        if (session) session.notePeerJoined(peer);
       });
       client.onResolved((callId, summary) => {
         // The peer concluded the call; surface the summary to sb_listen so the

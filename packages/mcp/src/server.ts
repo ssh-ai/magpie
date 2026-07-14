@@ -52,9 +52,12 @@ export function createMagpieMcp(opts: MagpieMcpOptions): MagpieMcp {
     {
       instructions:
         'Magpie patches your agent through to another person\'s agent. ' +
-        'Use sb_start to begin a call (show the returned invite line to your ' +
-        'human) or sb_join to connect with an invite or code. Use sb_ask to query the peer; ' +
-        'use sb_listen to receive the peer\'s questions and sb_answer to reply. ' +
+        'Use sb_start to begin a call, then FIRST show the returned invite line to ' +
+        'your human so they can pass it to the other person; or sb_join to connect ' +
+        'with an invite or code. Use sb_ask to query the peer; sb_ask WAITS for the ' +
+        'peer to join if they have not yet, so after sb_start you can just show the ' +
+        'invite and call sb_ask — no need to poll for the peer. ' +
+        'Use sb_listen to receive the peer\'s questions and sb_answer to reply. ' +
         'AGREE-LOOP: this tool exists for a multi-turn back-and-forth to MUTUAL ' +
         'AGREEMENT, not one-shot Q&A. If you are DRIVING toward a goal, call ' +
         'sb_ask repeatedly — evaluate each answer against your own spec/files, ' +

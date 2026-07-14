@@ -53,15 +53,20 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
       answerer conceded with a concrete fix (`call-<homeId>-<nanoid>`, pin home
       for the call's life). Zero human typing after the kickoff. This is the
       product thesis working via the REAL UX, not a scripted driver.
-  - **UX gaps found (fix these):**
-    - [ ] **sb_ask before the peer joins ERRORS** (relay has no live call yet),
-          forcing the opener's agent to invent an awkward "retry every 30s"
-          poll loop. sb_ask (or the opener flow) should WAIT for peer-joined and
-          then send, so "start a call and ask X" just works.
-    - [ ] **sb_ask 5-min default timeout is marginal** — a thorough answerer
-          turn (read repo + reason) ran the answerer ~7 min total; a single slow
-          turn could exceed 5 min and time out the driver mid-conversation.
-          Bump the default and/or make it adaptive.
+  - **UX gaps found → FIXED (2026-07-14, `session.ts`, live-verified over Fly):**
+    - [x] **sb_ask now WAITS for the peer to join** instead of erroring. If no one
+          has joined yet, `ask()` parks (up to DEFAULT_PEER_WAIT_MS = 10 min, the
+          pairing-TTL horizon) until `onPeerJoined` wakes it, then sends — so
+          "start a call and ask X" just works, no poll loop. Rejects cleanly if
+          the call closes or nobody joins in the window. Instructions updated to
+          say "show the invite, then sb_ask (it waits)". Verified live: ask()
+          before any join parked, resolved with the answer once the peer joined.
+    - [x] **ask reply timeout is now a generous backstop, not a guess.** A peer
+          that DISCONNECTS already fails the ask immediately (`markClosed`), so
+          the timeout only bounds a still-connected-but-silent peer. Bumped
+          DEFAULT_ASK_TIMEOUT_MS 5 → 15 min so thorough turns (read repo +
+          reason, seen ~7 min) are never cut off, while a wedged peer is still
+          bounded. sb_ask also accepts an optional per-call reply timeout.
 - [x] **THE core: autonomous agree-loop (S2).** `AutoDriver` (drives a goal:
       ask → evaluate peer reply vs its OWN spec/files → push back → conclude) +
       `ClaudeDriver`, paired with the existing `AutoAttendant`/`ClaudeResponder`.
