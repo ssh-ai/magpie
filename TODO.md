@@ -41,6 +41,27 @@ is mode ② (real agent autonomy) + UX + hardening + reach.
 ---
 
 ## P0 — Mode ② : real agent autonomy (the product)
+- [x] **END-TO-END UX VALIDATED (2026-07-14): real natural-language driver over
+      the hosted relay.** A human typed ONE natural sentence to Claude Code
+      ("start a call, ask the peer how to horizontally-scale the relay's
+      same-call routing, verify against our code, push to agreement"). The
+      driver autonomously ran sb_start → sb_ask; a separate headless Claude
+      answerer (`claude -p` + magpie MCP, `@sora/peer`) joined, read the repo,
+      and debated multi-turn. They reached a **firm AGREED** conclusion — the
+      driver found a real bug in the answerer's first proposal (shard-token-in-
+      callId rehash silently kills live calls on autoscale) + two gaps, and the
+      answerer conceded with a concrete fix (`call-<homeId>-<nanoid>`, pin home
+      for the call's life). Zero human typing after the kickoff. This is the
+      product thesis working via the REAL UX, not a scripted driver.
+  - **UX gaps found (fix these):**
+    - [ ] **sb_ask before the peer joins ERRORS** (relay has no live call yet),
+          forcing the opener's agent to invent an awkward "retry every 30s"
+          poll loop. sb_ask (or the opener flow) should WAIT for peer-joined and
+          then send, so "start a call and ask X" just works.
+    - [ ] **sb_ask 5-min default timeout is marginal** — a thorough answerer
+          turn (read repo + reason) ran the answerer ~7 min total; a single slow
+          turn could exceed 5 min and time out the driver mid-conversation.
+          Bump the default and/or make it adaptive.
 - [x] **THE core: autonomous agree-loop (S2).** `AutoDriver` (drives a goal:
       ask → evaluate peer reply vs its OWN spec/files → push back → conclude) +
       `ClaudeDriver`, paired with the existing `AutoAttendant`/`ClaudeResponder`.
